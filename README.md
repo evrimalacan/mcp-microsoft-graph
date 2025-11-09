@@ -4,42 +4,6 @@ A **Model Context Protocol (MCP)** server that connects AI assistants to Microso
 
 ## 🚀 Quick Start
 
-### Get Your Azure AD Credentials
-
-1. Go to [Azure Portal](https://portal.azure.com/) → **Azure Active Directory** → **App registrations**
-2. Click **New registration**
-3. Give it a name (e.g., "MCP Microsoft Graph")
-4. Set **Supported account types** to "Single tenant"
-5. Click **Register**
-6. Note the **Application (client) ID** and **Directory (tenant) ID**
-7. Go to **API permissions** → **Add a permission** → **Microsoft Graph** → **Delegated permissions**
-8. Add these permissions:
-   - `User.Read` - Read user profile
-   - `User.ReadBasic.All` - Read all users' basic profiles
-   - `Chat.ReadBasic` - Read basic chat properties
-   - `Chat.ReadWrite` - Read and write chats
-   - `ChatMessage.Read` - Read chat messages
-   - `ChatMessage.Send` - Send chat messages
-9. Click **Grant admin consent** (if you have admin rights)
-
-### Authenticate
-
-Before using the MCP server, authenticate once:
-
-```bash
-# Clone the repo (if not using npx)
-git clone https://github.com/evrimalacan/mcp-microsoft-graph.git
-cd mcp-microsoft-graph
-npm install
-
-# Set up credentials
-cp .env.example .env.local
-# Edit .env.local with your CLIENT_ID and TENANT_ID
-
-# Authenticate (opens browser)
-npm run auth
-```
-
 ### Configuration
 
 #### Claude Code
@@ -73,6 +37,42 @@ Alternatively, add this configuration to your MCP client's configuration file:
   }
 }
 ```
+
+### Get Your Azure AD Credentials
+
+To get your `CLIENT_ID` and `TENANT_ID`:
+
+1. Go to [Azure Portal](https://portal.azure.com/) → **Azure Active Directory** → **App registrations**
+2. Click **New registration**
+3. Give it a name (e.g., "MCP Microsoft Graph")
+4. Set **Supported account types** to "Single tenant"
+5. Click **Register**
+6. Copy the **Application (client) ID** - this is your `MS_GRAPH_CLIENT_ID`
+7. Copy the **Directory (tenant) ID** - this is your `MS_GRAPH_TENANT_ID`
+
+### Required Permissions
+
+Configure these permissions in your Azure AD app:
+
+1. Go to **API permissions** → **Add a permission** → **Microsoft Graph** → **Delegated permissions**
+2. Add these permissions:
+   - `User.Read` - Read user profile
+   - `User.ReadBasic.All` - Read all users' basic profiles
+   - `Chat.ReadBasic` - Read basic chat properties
+   - `Chat.ReadWrite` - Read and write chats
+   - `ChatMessage.Read` - Read chat messages
+   - `ChatMessage.Send` - Send chat messages
+3. Click **Grant admin consent** (if you have admin rights)
+
+### Authenticate
+
+Run the authentication command once to sign in:
+
+```bash
+npm run auth
+```
+
+This will open a browser window for you to sign in with your Microsoft account.
 
 ## ✨ Features
 
@@ -121,6 +121,10 @@ The server provides **8 MCP tools** for Microsoft Graph operations:
 git clone https://github.com/evrimalacan/mcp-microsoft-graph.git
 cd mcp-microsoft-graph
 npm install
+
+# Set up credentials
+cp .env.example .env.local
+# Edit .env.local with your CLIENT_ID and TENANT_ID
 
 # Build
 npm run build

@@ -1,169 +1,195 @@
-# MCP Microsoft Graph
+# Microsoft Graph MCP
 
-An MCP (Model Context Protocol) server for Microsoft Graph API integration, focused on Microsoft Teams functionality.
+A **Model Context Protocol (MCP)** server that connects AI assistants to Microsoft Graph API. Search Teams messages, manage chats, send messages, and interact with your Microsoft 365 environment through natural language in Claude and other AI assistants.
 
-## Features
+## 🚀 Quick Start
 
-This MCP server provides tools for:
+### Get Your Azure AD Credentials
 
-- **User Management**: Search users, get user details, get current user profile
-- **Chat Operations**: Search and create chats (1:1 and group conversations)
-- **Message Operations**: Get messages, send messages, search across Teams messages
+1. Go to [Azure Portal](https://portal.azure.com/) → **Azure Active Directory** → **App registrations**
+2. Click **New registration**
+3. Give it a name (e.g., "MCP Microsoft Graph")
+4. Set **Supported account types** to "Single tenant"
+5. Click **Register**
+6. Note the **Application (client) ID** and **Directory (tenant) ID**
+7. Go to **API permissions** → **Add a permission** → **Microsoft Graph** → **Delegated permissions**
+8. Add these permissions:
+   - `User.Read` - Read user profile
+   - `User.ReadBasic.All` - Read all users' basic profiles
+   - `Chat.ReadBasic` - Read basic chat properties
+   - `Chat.ReadWrite` - Read and write chats
+   - `ChatMessage.Read` - Read chat messages
+   - `ChatMessage.Send` - Send chat messages
+9. Click **Grant admin consent** (if you have admin rights)
 
-## Installation
+### Authenticate
+
+Before using the MCP server, authenticate once:
 
 ```bash
+# Clone the repo (if not using npx)
+git clone https://github.com/evrimalacan/mcp-microsoft-graph.git
+cd mcp-microsoft-graph
 npm install
-npm run build
-```
 
-## Authentication
+# Set up credentials
+cp .env.example .env.local
+# Edit .env.local with your CLIENT_ID and TENANT_ID
 
-Before using the server, you need to authenticate with Microsoft Graph:
-
-```bash
+# Authenticate (opens browser)
 npm run auth
 ```
 
-This will open a browser window for you to sign in with your Microsoft account.
+### Configuration
 
-## Configuration
+#### Claude Code
 
-Create a `.env.local` file with your Azure AD application credentials:
+Add the server using the Claude Code CLI:
 
 ```bash
-# Azure AD Application
-MS_GRAPH_CLIENT_ID=your-client-id
-MS_GRAPH_TENANT_ID=your-tenant-id
-
-# Optional: Custom token storage path
-MS_GRAPH_TOKEN_PATH=/path/to/custom/token.json
+claude mcp add -s user \
+    microsoft-graph \
+    npx mcp-microsoft-graph@latest \
+    -e "MS_GRAPH_CLIENT_ID=your_client_id" \
+    -e "MS_GRAPH_TENANT_ID=your_tenant_id"
 ```
 
-See `.env.example` for a template.
+#### Manual Configuration (Any MCP Client)
 
-### Required Permissions
+Alternatively, add this configuration to your MCP client's configuration file:
 
-Configure these permissions in your Azure AD app registration:
-
-- `User.Read` - Read user profile
-- `User.ReadBasic.All` - Read all users' basic profiles
-- `Chat.ReadBasic` - Read basic chat properties
-- `Chat.ReadWrite` - Read and write chats
-- `ChatMessage.Read.All` - Read all chat messages
-- `ChatMessage.Send` - Send chat messages
-
-## Usage
-
-### Development Mode
-
-```bash
-npm run dev
+```json
+{
+  "mcpServers": {
+    "microsoft-graph": {
+      "command": "npx",
+      "args": ["mcp-microsoft-graph@latest"],
+      "type": "stdio",
+      "env": {
+        "MS_GRAPH_CLIENT_ID": "your_client_id",
+        "MS_GRAPH_TENANT_ID": "your_tenant_id"
+      }
+    }
+  }
+}
 ```
 
-### Production
+## ✨ Features
+
+- 💬 **Teams Chat Management** - Search, create, and manage Teams chats
+- 📨 **Message Operations** - Send messages, search conversations, get chat history
+- 👥 **User Discovery** - Search users and get profile information
+- 🔍 **Powerful Search** - Search across all Teams messages with KQL syntax
+- 🎯 **Smart Mentions** - @mention users in messages
+- 🔒 **OAuth Authentication** - Secure Azure AD authentication flow
+- 🎨 **Rich Formatting** - Markdown support in messages
+
+## 🛠️ Available Tools
+
+The server provides **8 MCP tools** for Microsoft Graph operations:
+
+### User Management
+- `get_current_user` - Get your own profile information
+- `search_users` - Search for users by name or email
+- `get_user` - Get detailed information about a specific user
+
+### Chat Operations
+- `search_chats` - Search chats by topic or member name
+- `create_chat` - Create new 1:1 or group chats
+
+### Message Operations
+- `get_chat_messages` - Retrieve messages from a specific chat
+- `send_chat_message` - Send messages with Markdown and mentions
+- `search_messages` - Search across all Teams messages using KQL
+
+## 💡 Example Queries
+
+- *"Search for chats with John Smith"*
+- *"Show me recent messages from the Engineering chat"*
+- *"Send a message to the Dev Team chat saying the deployment is complete"*
+- *"Search all Teams messages mentioning the Q4 roadmap"*
+- *"Create a group chat with Alice, Bob, and Carol about the new project"*
+- *"Find all urgent messages from last week"*
+- *"Get my user profile information"*
+
+## 🏗️ Development
+
+### From Source
 
 ```bash
+# Clone and setup
+git clone https://github.com/evrimalacan/mcp-microsoft-graph.git
+cd mcp-microsoft-graph
+npm install
+
+# Build
 npm run build
-node dist/index.js
-```
 
-### Testing with MCP Inspector
-
-```bash
-npx @modelcontextprotocol/inspector node dist/index.js
-```
-
-## Available Tools
-
-### User Tools
-
-#### get_current_user
-Get the authenticated user's profile information.
-
-#### search_users
-Search for users by name or email address.
-
-#### get_user
-Get detailed information about a specific user.
-
-### Chat Tools
-
-#### search_chats
-Search for chats with optional filtering:
-- `searchTerm`: Filter by chat topic name
-- `memberName`: Filter by member display name
-- Both filters can be combined
-
-#### create_chat
-Create new 1:1 or group chats.
-
-### Message Tools
-
-#### get_chat_messages
-Retrieve messages from a specific chat:
-- `chatId` (required): The chat ID
-- `limit`: Max number of messages (default: 20)
-- `from`/`to`: ISO datetime filters
-- `fromUser`: Filter by sender
-
-#### send_chat_message
-Send messages to a chat with support for:
-- Markdown formatting
-- @mentions
-- Importance levels (normal, high, urgent)
-
-#### search_messages
-Search across all Teams messages using KQL syntax:
-- `query`: Raw KQL query string
-- `mentions`: Search for mentions of a user
-- `from`: ISO datetime filter
-- `fromUser`: Filter by sender
-- `scope`: all/channels/chats
-- `limit`: Max results (default: 25)
-
-## Project Structure
-
-```
-src/
-├── config.ts                 # Environment variables with validation
-├── index.ts                  # Main entry point, server setup
-├── services/
-│   └── graph.ts             # GraphService singleton for API client
-├── tools/
-│   ├── index.ts             # Main registerTools function
-│   ├── users/               # User management tools
-│   ├── chats/               # Chat management tools
-│   └── messages/            # Message operations tools
-└── types/
-    └── graph.ts             # TypeScript types for Graph API responses
-```
-
-## Development Commands
-
-```bash
-# Development with hot reload
-npm run dev
-
-# Authenticate with Microsoft Graph
+# Authenticate
 npm run auth
+
+# Development mode
+npm run dev
 
 # Run tests
 npm test
-
-# Build for production
-npm run build
-
-# Type checking
-npx tsc --noEmit
 ```
 
-## Resources
+### Adding New Tools
 
-- [Microsoft Graph Explorer](https://developer.microsoft.com/graph/graph-explorer) - Interactive API testing tool
-- [Microsoft Graph Documentation](https://learn.microsoft.com/graph) - Official API documentation
-- [Graph SDK for JavaScript](https://github.com/microsoftgraph/msgraph-sdk-javascript) - Official SDK
+1. Create a new tool file in the appropriate domain folder under `src/tools/`
+2. Export it from the domain's `index.ts`
+3. Register it in `src/tools/index.ts`
 
-## License
+See the existing tools for examples and patterns.
 
-See [LICENSE](LICENSE) file for details.
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**"Authentication failed"**
+- Run `npm run auth` to authenticate again
+- Verify your CLIENT_ID and TENANT_ID are correct
+- Check that your Azure AD app has the required permissions
+
+**"Access forbidden"**
+- Ensure your Azure AD app has the necessary permissions granted
+- Check if admin consent is required and has been granted
+- Verify you're signed in with the correct account
+
+**"Token expired"**
+- Run `npm run auth` to refresh your authentication
+- Check that the token file path is accessible
+
+**"Chat not found"**
+- Verify the chat ID is correct
+- Ensure you have access to the chat
+- Check that the chat still exists
+
+## 📚 Documentation
+
+- **[Microsoft Graph Explorer](https://developer.microsoft.com/graph/graph-explorer)** - Interactive API testing
+- **[Microsoft Graph Documentation](https://learn.microsoft.com/graph)** - Official API reference
+- **[Model Context Protocol](https://modelcontextprotocol.io)** - MCP specification
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Add tests for your changes
+4. Commit your changes (`git commit -m 'Add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🌟 Support
+
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/evrimalacan/mcp-microsoft-graph/issues)
+- 💡 **Feature Requests**: [GitHub Discussions](https://github.com/evrimalacan/mcp-microsoft-graph/discussions)
+
+---
+
+**Built for seamless Microsoft Teams integration with AI assistants**

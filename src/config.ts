@@ -36,6 +36,7 @@ function validateConfig(): GraphConfig {
     'TeamMember.Read.All',
     'Chat.ReadBasic',
     'Chat.ReadWrite',
+    'Calendars.ReadWrite',
   ];
 
   return {

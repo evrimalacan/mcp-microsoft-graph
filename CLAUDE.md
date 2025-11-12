@@ -8,6 +8,114 @@ This is an MCP (Model Context Protocol) server for Microsoft Graph API integrati
 - User management (search, get current user, get user details)
 - Chat operations (list chats, create chats)
 - Message operations (get messages, send messages, search messages)
+- Mail operations (list emails, send emails)
+- Calendar operations (list events, create events)
+
+## Authentication & Token Management
+
+### How Authentication Works
+
+This MCP server uses **Azure Identity SDK** with **DeviceCodeCredential** for authentication. This eliminates the need for hourly re-authentication by implementing automatic token refresh.
+
+**Key Components:**
+1. **DeviceCodeCredential** - OAuth 2.0 device code flow for headless/CLI authentication
+2. **Token Cache Persistence** - Tokens stored securely on disk
+3. **AuthenticationRecord** - Enables silent re-authentication across restarts
+
+**Token Lifecycle:**
+- **Access Tokens**: Expire after ~1 hour, refresh automatically
+- **Refresh Tokens**: Valid for ~90 days, enable silent token renewal
+- **No interruptions**: Once authenticated, works for 90 days without user interaction
+
+### First-Time Setup
+
+Users must authenticate once:
+
+```bash
+npm run auth
+# OR
+npx mcp-microsoft-graph authenticate
+```
+
+This will:
+1. Display a device code and URL (e.g., https://microsoft.com/devicelogin)
+2. User visits URL and enters code
+3. Saves **AuthenticationRecord** to `~/.mcp-microsoft-graph-auth-record.json`
+4. Caches tokens in `~/.IdentityService/mcp-microsoft-graph` (macOS/Linux) or `%LOCALAPPDATA%\.IdentityService\mcp-microsoft-graph` (Windows)
+
+### How Token Refresh Works
+
+**Automatic Refresh Flow:**
+```
+1. MCP server starts → loads AuthenticationRecord
+2. Tool called → needs access token
+3. Check cached token:
+   - If valid → use it
+   - If expired → use refresh token to get new access token (SILENT)
+   - If refresh token expired → prompt for device code (after ~90 days)
+```
+
+**Implementation Details:**
+
+The `GraphService` class (src/services/graph.ts) handles everything:
+
+```typescript
+// Load AuthenticationRecord on startup
+const authRecord = await loadAuthRecord();
+
+// Create credential with persistent cache
+const credential = new DeviceCodeCredential({
+  clientId: CLIENT_ID,
+  tenantId: TENANT_ID,
+  tokenCachePersistenceOptions: {
+    enabled: true,
+    name: 'mcp-microsoft-graph',
+  },
+  authenticationRecord: authRecord, // KEY: Enables silent auth
+});
+
+// Get token (automatic refresh if expired)
+const tokenResponse = await credential.getToken(SCOPES);
+```
+
+**Why This Works:**
+- `@azure/identity` SDK handles all refresh logic internally
+- `AuthenticationRecord` tells SDK which cached account to use
+- Refresh tokens are automatically used when access tokens expire
+- Only prompts for device code if refresh token is gone/expired
+
+### Re-authentication
+
+Users only need to re-authenticate if:
+1. **90 days have passed** (refresh token expired)
+2. **Credentials were revoked** (admin action)
+3. **Cache files deleted** (manual cleanup)
+
+Simply run `npm run auth` again when needed.
+
+### Security Notes
+
+- **Tokens encrypted**: Windows uses DPAPI, macOS uses Keychain (when available)
+- **Fallback**: `unsafeAllowUnencryptedStorage: true` allows file-based cache on systems without secure storage
+- **No secrets in code**: Client ID and Tenant ID are not secrets (public OAuth identifiers)
+- **Refresh token rotation**: Microsoft may rotate refresh tokens periodically for security
+
+### Troubleshooting
+
+**"Failed to obtain token" error:**
+```bash
+# Solution: Re-authenticate
+npm run auth
+```
+
+**MCP server not connecting:**
+- Check that authentication completed successfully
+- Verify `~/.mcp-microsoft-graph-auth-record.json` exists
+- Check logs for specific error messages
+
+**Token refresh failing:**
+- Tokens may have been revoked by admin
+- Re-authenticate: `npm run auth`
 
 ## Microsoft Graph API Tool Development
 

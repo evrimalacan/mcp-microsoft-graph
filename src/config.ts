@@ -8,12 +8,18 @@ export interface GraphConfig {
   clientId: string;
   tenantId: string;
   scopes: string[];
-  tokenPath: string;
+  tokenPath: string; // Legacy: No longer used for authentication (Azure Identity SDK caches tokens automatically)
 }
 
 function validateConfig(): GraphConfig {
   const clientId = process.env.MS_GRAPH_CLIENT_ID;
   const tenantId = process.env.MS_GRAPH_TENANT_ID;
+
+  // NOTE: tokenPath is kept for backward compatibility but is no longer used for authentication
+  // Azure Identity SDK (@azure/identity) automatically caches tokens in:
+  //   - macOS/Linux: ~/.IdentityService/mcp-microsoft-graph
+  //   - Windows: %LOCALAPPDATA%\.IdentityService\mcp-microsoft-graph
+  // This cache includes both access tokens (~1 hour) and refresh tokens (~90 days)
   const tokenPath = process.env.MS_GRAPH_TOKEN_PATH || join(homedir(), '.mcp-microsoft-graph-auth.json');
 
   if (!clientId) {

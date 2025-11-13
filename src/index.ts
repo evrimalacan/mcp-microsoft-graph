@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { DeviceCodeCredential, useIdentityPlugin } from '@azure/identity';
 import { cachePersistencePlugin } from '@azure/identity-cache-persistence';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -31,8 +31,8 @@ async function authenticate() {
     tenantId: TENANT_ID,
     tokenCachePersistenceOptions: {
       enabled: true,
-      name: 'mcp-microsoft-graph',  // Named cache for this application
-      unsafeAllowUnencryptedStorage: true,  // Allow unencrypted storage if keychain unavailable
+      name: 'mcp-microsoft-graph', // Named cache for this application
+      unsafeAllowUnencryptedStorage: true, // Allow unencrypted storage if keychain unavailable
     },
     userPromptCallback: (info) => {
       console.log('\nPlease complete authentication:');

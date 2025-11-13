@@ -2,10 +2,10 @@ import { promises as fs } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import {
-  DeviceCodeCredential,
-  useIdentityPlugin,
-  deserializeAuthenticationRecord,
   type AuthenticationRecord,
+  DeviceCodeCredential,
+  deserializeAuthenticationRecord,
+  useIdentityPlugin,
 } from '@azure/identity';
 import { cachePersistencePlugin } from '@azure/identity-cache-persistence';
 import { Client } from '@microsoft/microsoft-graph-client';
@@ -39,7 +39,7 @@ export class GraphService {
       const authRecordPath = join(homedir(), '.mcp-microsoft-graph-auth-record.json');
       const content = await fs.readFile(authRecordPath, 'utf-8');
       return deserializeAuthenticationRecord(content);
-    } catch (error) {
+    } catch (_error) {
       // Auth record doesn't exist or can't be read - user needs to authenticate
       return null;
     }
@@ -60,8 +60,8 @@ export class GraphService {
       tenantId: TENANT_ID,
       tokenCachePersistenceOptions: {
         enabled: true,
-        name: 'mcp-microsoft-graph',  // Named cache for this application
-        unsafeAllowUnencryptedStorage: true,  // Allow unencrypted storage if keychain unavailable
+        name: 'mcp-microsoft-graph', // Named cache for this application
+        unsafeAllowUnencryptedStorage: true, // Allow unencrypted storage if keychain unavailable
       },
       // KEY: Pass the AuthenticationRecord to enable silent authentication!
       authenticationRecord: authRecord || undefined,
@@ -76,21 +76,21 @@ export class GraphService {
             // 1. Returns cached access token if still valid
             // 2. Refreshes using cached refresh token if access token expired
             // 3. Only prompts for device code if refresh token expired (after ~90 days)
-            const tokenResponse = await this.credential!.getToken(SCOPES);
+            const tokenResponse = await this.credential?.getToken(SCOPES);
 
             if (!tokenResponse) {
               throw new Error('Failed to obtain token. Run: npx mcp-microsoft-graph authenticate');
             }
 
             return tokenResponse.token;
-          } catch (error) {
+          } catch (_error) {
             // If token acquisition fails, provide helpful error message
             throw new Error(
               'Authentication failed. This could mean:\n' +
-              '  1. You haven\'t authenticated yet\n' +
-              '  2. Your refresh token expired (after ~90 days)\n' +
-              '  3. Your credentials were revoked\n\n' +
-              'Solution: Run "npx mcp-microsoft-graph authenticate"'
+                "  1. You haven't authenticated yet\n" +
+                '  2. Your refresh token expired (after ~90 days)\n' +
+                '  3. Your credentials were revoked\n\n' +
+                'Solution: Run "npx mcp-microsoft-graph authenticate"',
             );
           }
         },

@@ -23,11 +23,12 @@ export const searchUsersTool = (server: McpServer) => {
         .search(`"mail:${query}" OR "displayName:${query}"`)
         .get()) as GraphApiResponse<User>;
 
-      const userList: UserSummary[] = response.value!.map((user: User) => ({
-        displayName: user.displayName,
-        mail: user.mail,
-        id: user.id,
-      }));
+      const userList: UserSummary[] =
+        response.value?.map((user: User) => ({
+          displayName: user.displayName,
+          mail: user.mail,
+          id: user.id,
+        })) ?? [];
 
       return {
         content: [

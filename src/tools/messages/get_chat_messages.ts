@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
-import type { ChatMessage, GraphApiResponse, MessageSummary } from '../../types/graph.js';
+import type { ChatMessage, GraphApiResponse } from '../../types/graph.js';
 
 const schema = z.object({
   chatId: z.string().describe('Chat ID (e.g. 19:meeting_Njhi..j@thread.v2'),
@@ -55,6 +55,7 @@ export const getChatMessagesTool = (server: McpServer) => {
         content: message.body?.content,
         from: message.from?.user?.displayName,
         createdDateTime: message.createdDateTime,
+        reactions: message.reactions || [],
       }));
 
       return {

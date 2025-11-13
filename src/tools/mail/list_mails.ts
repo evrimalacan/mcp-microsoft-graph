@@ -73,7 +73,7 @@ export const listMailsTool = (server: McpServer) => {
 
       const response = await query.get();
 
-      const messages = (response?.value || []).map((message: any) => ({
+      const _messages = (response?.value || []).map((message: any) => ({
         id: message.id,
         subject: message.subject,
         from: {

@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
-import type { Attendee, Event } from '../../types/graph.js';
+import type { OptimizedEvent } from '../tools.types.js';
 
 const schema = z.object({
   subject: z.string().describe('Event title/subject'),
@@ -39,81 +39,32 @@ export const createCalendarEventTool = (server: McpServer) => {
     async ({ subject, startDateTime, endDateTime, body, attendees, location, isOnlineMeeting }) => {
       const client = await graphService.getClient();
 
-      // Normalize attendees from email strings to proper attendee objects
-      const normalizedAttendees: Attendee[] | undefined = attendees?.map((attendee) => {
-        if (typeof attendee === 'string') {
-          // Simple email string
-          return {
-            emailAddress: {
-              address: attendee,
-            },
-            type: 'required',
-          } as Attendee;
-        }
-        // Attendee object
-        return {
-          emailAddress: {
-            address: attendee.email,
-            name: attendee.name,
-          },
-          type: attendee.type || 'required',
-        } as Attendee;
+      const newEvent = await client.createCalendarEvent({
+        subject,
+        startDateTime,
+        endDateTime,
+        body,
+        attendees,
+        location,
+        isOnlineMeeting,
       });
 
-      // Build event payload
-      const eventPayload: Partial<Event> = {
-        subject,
-        body: {
-          contentType: 'text',
-          content: body,
-        },
-        start: {
-          dateTime: startDateTime,
-          timeZone: 'UTC',
-        },
-        end: {
-          dateTime: endDateTime,
-          timeZone: 'UTC',
-        },
-        attendees: normalizedAttendees,
+      const optimizedEvent: OptimizedEvent = {
+        id: newEvent.id,
+        subject: newEvent.subject || undefined,
+        start: newEvent.start || undefined,
+        end: newEvent.end || undefined,
+        location: newEvent.location || undefined,
+        isOnlineMeeting: newEvent.isOnlineMeeting || undefined,
+        onlineMeeting: newEvent.onlineMeeting || undefined,
+        attendees: newEvent.attendees || undefined,
       };
-
-      if (location) {
-        eventPayload.location = {
-          displayName: location,
-        };
-      }
-
-      if (isOnlineMeeting !== undefined) {
-        eventPayload.isOnlineMeeting = isOnlineMeeting;
-      }
-
-      const newEvent = (await client.api('/me/events').post(eventPayload)) as Event;
 
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(
-              {
-                id: newEvent.id,
-                subject: newEvent.subject,
-                body: newEvent.body?.content,
-                start: newEvent.start?.dateTime,
-                end: newEvent.end?.dateTime,
-                location: newEvent.location?.displayName,
-                isOnlineMeeting: newEvent.isOnlineMeeting,
-                onlineMeetingUrl: newEvent.onlineMeeting?.joinUrl,
-                attendees: newEvent.attendees?.map((attendee) => ({
-                  name: attendee.emailAddress?.name,
-                  email: attendee.emailAddress?.address,
-                  type: attendee.type,
-                })),
-                webLink: newEvent.webLink,
-              },
-              null,
-              2,
-            ),
+            text: JSON.stringify(optimizedEvent, null, 2),
           },
         ],
       };

@@ -22,10 +22,7 @@ export const unsetMessageReactionTool = (server: McpServer) => {
     },
     async ({ chatId, messageId, reactionType }) => {
       const client = await graphService.getClient();
-
-      await client.api(`/chats/${chatId}/messages/${messageId}/unsetReaction`).post({
-        reactionType,
-      });
+      await client.unsetMessageReaction({ chatId, messageId, reactionType });
 
       return {
         content: [

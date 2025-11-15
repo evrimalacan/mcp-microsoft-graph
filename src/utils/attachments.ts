@@ -27,7 +27,7 @@ export async function uploadImageAsHostedContent(
   fileName?: string,
 ): Promise<{ hostedContentId: string; attachment: ImageAttachment } | null> {
   try {
-    const client = await graphService.getClient();
+    const client = await graphService.getSDKClient();
 
     // Convert Buffer to base64 if needed
     const contentBytes = typeof imageData === 'string' ? imageData : imageData.toString('base64');

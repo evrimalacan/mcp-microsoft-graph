@@ -1,5 +1,5 @@
+import type { User } from '../client/graph.types.js';
 import type { GraphService } from '../services/graph.js';
-import type { User } from '../types/graph.js';
 
 export interface UserInfo {
   id: string;
@@ -12,7 +12,7 @@ export interface UserInfo {
  */
 export async function searchUsers(graphService: GraphService, query: string, limit = 10): Promise<UserInfo[]> {
   try {
-    const client = await graphService.getClient();
+    const client = await graphService.getSDKClient();
 
     // Use filter query to search users by displayName or userPrincipalName
     const searchQuery = `$filter=startswith(displayName,'${query}') or startswith(userPrincipalName,'${query}')&$top=${limit}&$select=id,displayName,userPrincipalName`;
@@ -39,7 +39,7 @@ export async function searchUsers(graphService: GraphService, query: string, lim
  */
 export async function getUserByEmail(graphService: GraphService, email: string): Promise<UserInfo | null> {
   try {
-    const client = await graphService.getClient();
+    const client = await graphService.getSDKClient();
 
     const response = await client.api(`/users/${email}`).get();
 
@@ -59,7 +59,7 @@ export async function getUserByEmail(graphService: GraphService, email: string):
  */
 export async function getUserById(graphService: GraphService, userId: string): Promise<UserInfo | null> {
   try {
-    const client = await graphService.getClient();
+    const client = await graphService.getSDKClient();
 
     const response = await client.api(`/users/${userId}`).select('id,displayName,userPrincipalName').get();
 

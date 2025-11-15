@@ -1,7 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import type { ConversationMember } from '../../client/graph.types.js';
 import { graphService } from '../../services/graph.js';
-import type { Chat, ChatSummary, ConversationMember, CreateChatPayload, User } from '../../types/graph.js';
+import type { OptimizedChat } from '../tools.types.js';
 
 const schema = z.object({
   userEmails: z.array(z.string()).describe('Array of user email addresses to add to chat'),
@@ -20,7 +21,7 @@ export const createChatTool = (server: McpServer) => {
     async ({ userEmails, topic }) => {
       const client = await graphService.getClient();
 
-      const me = (await client.api('/me').get()) as User;
+      const me = await client.getCurrentUser();
 
       const members: ConversationMember[] = [
         {
@@ -33,7 +34,7 @@ export const createChatTool = (server: McpServer) => {
       ];
 
       for (const email of userEmails) {
-        const user = (await client.api(`/users/${email}`).get()) as User;
+        const user = await client.getUser({ userId: email });
         members.push({
           '@odata.type': '#microsoft.graph.aadUserConversationMember',
           user: {
@@ -43,18 +44,14 @@ export const createChatTool = (server: McpServer) => {
         } as ConversationMember);
       }
 
-      const chatData: CreateChatPayload = {
-        chatType: userEmails.length === 1 ? 'oneOnOne' : 'group',
+      const chatType = userEmails.length === 1 ? 'oneOnOne' : 'group';
+      const newChat = await client.createChat({
+        chatType,
         members,
-      };
+        ...(topic && userEmails.length > 1 && { topic }),
+      });
 
-      if (topic && userEmails.length > 1) {
-        chatData.topic = topic;
-      }
-
-      const newChat = (await client.api('/chats').post(chatData)) as Chat;
-
-      const chatSummary: ChatSummary = {
+      const chatSummary: OptimizedChat = {
         id: newChat.id,
         topic: newChat.topic,
         chatType: newChat.chatType,

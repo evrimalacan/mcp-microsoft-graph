@@ -23,37 +23,13 @@ export const sendMailTool = (server: McpServer) => {
     async ({ to, subject, body, bodyType, cc, bcc }) => {
       const client = await graphService.getClient();
 
-      const message: any = {
+      await client.sendMail({
+        to,
         subject,
-        body: {
-          contentType: bodyType === 'html' ? 'HTML' : 'Text',
-          content: body,
-        },
-        toRecipients: to.map((email) => ({
-          emailAddress: {
-            address: email,
-          },
-        })),
-      };
-
-      if (cc && cc.length > 0) {
-        message.ccRecipients = cc.map((email) => ({
-          emailAddress: {
-            address: email,
-          },
-        }));
-      }
-
-      if (bcc && bcc.length > 0) {
-        message.bccRecipients = bcc.map((email) => ({
-          emailAddress: {
-            address: email,
-          },
-        }));
-      }
-
-      await client.api('/me/sendMail').post({
-        message,
+        body,
+        bodyType,
+        cc,
+        bcc,
       });
 
       return {

@@ -23,10 +23,7 @@ export const setMessageReactionTool = (server: McpServer) => {
     },
     async ({ chatId, messageId, reactionType }) => {
       const client = await graphService.getClient();
-
-      await client.api(`/chats/${chatId}/messages/${messageId}/setReaction`).post({
-        reactionType,
-      });
+      await client.setMessageReaction({ chatId, messageId, reactionType });
 
       return {
         content: [

@@ -1,7 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import type { ConversationMember } from '../../client/graph.types.js';
 import { graphService } from '../../services/graph.js';
-import type { Chat, ChatSummary, ConversationMember, GraphApiResponse } from '../../types/graph.js';
+import type { OptimizedChat } from '../tools.types.js';
 
 const schema = z.object({
   searchTerm: z.string().optional().describe('Search for chats by topic name'),
@@ -24,26 +25,9 @@ export const searchChatsTool = (server: McpServer) => {
     },
     async ({ searchTerm, memberName }) => {
       const client = await graphService.getClient();
+      const chats = await client.searchChats({ searchTerm, memberName });
 
-      let query = client.api(`/me/chats`).expand('members');
-
-      const filters: string[] = [];
-
-      if (searchTerm) {
-        filters.push(`contains(topic, '${searchTerm}')`);
-      }
-
-      if (memberName) {
-        filters.push(`members/any(c:contains(c/displayName, '${memberName}'))`);
-      }
-
-      if (filters.length > 0) {
-        query = query.filter(filters.join(' and '));
-      }
-
-      const response = (await query.get()) as GraphApiResponse<Chat>;
-
-      const chatList: ChatSummary[] = (response.value || []).map((chat) => ({
+      const chatList: OptimizedChat[] = chats.map((chat) => ({
         id: chat.id,
         topic: chat.topic,
         chatType: chat.chatType,

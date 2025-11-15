@@ -1,9 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
-import type { ChatMessage } from '../../types/graph.js';
-import { markdownToHtml } from '../../utils/markdown.js';
-import { processMentionsInHtml } from '../../utils/users.js';
 
 const schema = z.object({
   chatId: z.string().describe('Chat ID'),
@@ -30,75 +27,22 @@ export const sendChatMessageTool = (server: McpServer) => {
         'Send a message to a specific chat conversation. Supports text and markdown formatting, mentions, and importance levels.',
       inputSchema: schema.shape,
     },
-    async ({ chatId, message, importance = 'normal', format = 'text', mentions }) => {
+    async ({ chatId, message, importance, format, mentions }) => {
       const client = await graphService.getClient();
 
-      let content: string;
-      let contentType: 'text' | 'html';
-
-      if (format === 'markdown') {
-        content = await markdownToHtml(message);
-        contentType = 'html';
-      } else {
-        content = message;
-        contentType = 'text';
-      }
-
-      const mentionMappings: Array<{ mention: string; userId: string; displayName: string }> = [];
-      if (mentions && mentions.length > 0) {
-        for (const mention of mentions) {
-          try {
-            const userResponse = await client.api(`/users/${mention.userId}`).select('displayName').get();
-            mentionMappings.push({
-              mention: mention.mention,
-              userId: mention.userId,
-              displayName: userResponse.displayName || mention.mention,
-            });
-          } catch (_error) {
-            mentionMappings.push({
-              mention: mention.mention,
-              userId: mention.userId,
-              displayName: mention.mention,
-            });
-          }
-        }
-      }
-
-      let finalMentions: Array<{
-        id: number;
-        mentionText: string;
-        mentioned: { user: { id: string } };
-      }> = [];
-      if (mentionMappings.length > 0) {
-        const result = processMentionsInHtml(content, mentionMappings);
-        content = result.content;
-        finalMentions = result.mentions;
-        contentType = 'html';
-      }
-
-      const messagePayload: any = {
-        body: {
-          content,
-          contentType,
-        },
+      const result = await client.sendChatMessage({
+        chatId,
+        message,
         importance,
-      };
-
-      if (finalMentions.length > 0) {
-        messagePayload.mentions = finalMentions;
-      }
-
-      const result = (await client.api(`/me/chats/${chatId}/messages`).post(messagePayload)) as ChatMessage;
-
-      const successText = `✅ Message sent successfully. Message ID: ${result.id}${
-        finalMentions.length > 0 ? `\n📱 Mentions: ${finalMentions.map((m) => m.mentionText).join(', ')}` : ''
-      }`;
+        format,
+        mentions,
+      });
 
       return {
         content: [
           {
             type: 'text',
-            text: successText,
+            text: `✅ Message sent successfully. Message ID: ${result.id}`,
           },
         ],
       };

@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
-import type { Event, GraphApiResponse } from '../../types/graph.js';
+import type { OptimizedEvent } from '../tools.types.js';
 
 const schema = z.object({
   from: z
@@ -32,46 +32,22 @@ export const getCalendarEventsTool = (server: McpServer) => {
     async ({ from, to, subject, limit }) => {
       const client = await graphService.getClient();
 
-      // Calculate date range with defaults
-      const now = new Date();
-      const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const events = await client.getCalendarEvents({
+        from,
+        to,
+        subject,
+        limit,
+      });
 
-      const startDateTime = from || now.toISOString();
-      const endDateTime = to || thirtyDaysLater.toISOString();
-
-      // calendarView requires startDateTime and endDateTime as query parameters
-      let query = client
-        .api('/me/calendar/calendarView')
-        .query({ startDateTime, endDateTime })
-        .top(limit)
-        .orderby('start/dateTime');
-
-      // Apply subject filter if specified
-      if (subject) {
-        query = query.filter(`contains(subject, '${subject}')`);
-      }
-
-      const response = (await query.get()) as GraphApiResponse<Event>;
-
-      const events = (response?.value || []).map((event) => ({
+      const optimizedEvents: OptimizedEvent[] = events.map((event) => ({
         id: event.id,
-        subject: event.subject,
-        body: event.body?.content,
-        start: event.start?.dateTime,
-        end: event.end?.dateTime,
-        location: event.location?.displayName,
-        isOnlineMeeting: event.isOnlineMeeting,
-        onlineMeetingUrl: event.onlineMeeting?.joinUrl,
-        attendees: event.attendees?.map((attendee) => ({
-          name: attendee.emailAddress?.name,
-          email: attendee.emailAddress?.address,
-          type: attendee.type,
-          status: attendee.status?.response,
-        })),
-        organizer: {
-          name: event.organizer?.emailAddress?.name,
-          email: event.organizer?.emailAddress?.address,
-        },
+        subject: event.subject || undefined,
+        start: event.start || undefined,
+        end: event.end || undefined,
+        location: event.location || undefined,
+        isOnlineMeeting: event.isOnlineMeeting || undefined,
+        onlineMeeting: event.onlineMeeting || undefined,
+        attendees: event.attendees || undefined,
       }));
 
       return {
@@ -80,9 +56,8 @@ export const getCalendarEventsTool = (server: McpServer) => {
             type: 'text',
             text: JSON.stringify(
               {
-                totalReturned: events.length,
-                hasMore: !!response['@odata.nextLink'],
-                events,
+                totalReturned: optimizedEvents.length,
+                events: optimizedEvents,
               },
               null,
               2,

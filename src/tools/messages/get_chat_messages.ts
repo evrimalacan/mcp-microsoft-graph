@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
-import type { ChatMessage, GraphApiResponse } from '../../types/graph.js';
+import type { OptimizedChatMessage, OptimizedChatMessageWithFilters } from '../tools.types.js';
 
 const schema = z.object({
   chatId: z.string().describe('Chat ID (e.g. 19:meeting_Njhi..j@thread.v2'),
@@ -22,57 +22,29 @@ export const getChatMessagesTool = (server: McpServer) => {
     },
     async ({ chatId, limit, from, to, fromUser }) => {
       const client = await graphService.getClient();
+      const messages = await client.getChatMessages({ chatId, limit, from, to, fromUser });
 
-      let query = client.api(`/me/chats/${chatId}/messages`).top(limit).orderby('createdDateTime desc');
-
-      if (fromUser) {
-        query = query.filter(`from/user/id eq '${fromUser}'`);
-      }
-
-      const response = (await query.get()) as GraphApiResponse<ChatMessage>;
-
-      let filteredMessages = response?.value || [];
-
-      if ((from || to) && filteredMessages.length > 0) {
-        filteredMessages = filteredMessages.filter((message: ChatMessage) => {
-          if (!message.createdDateTime) return true;
-
-          const messageDate = new Date(message.createdDateTime);
-          if (from) {
-            const fromDate = new Date(from);
-            if (messageDate <= fromDate) return false;
-          }
-          if (to) {
-            const toDate = new Date(to);
-            if (messageDate >= toDate) return false;
-          }
-          return true;
-        });
-      }
-
-      const messageList = filteredMessages.map((message) => ({
+      const messageList: OptimizedChatMessage[] = messages.map((message) => ({
         id: message.id,
-        content: message.body?.content,
-        from: message.from?.user?.displayName,
-        createdDateTime: message.createdDateTime,
+        content: message.body?.content || undefined,
+        from: message.from?.user?.displayName || undefined,
+        createdDateTime: message.createdDateTime || undefined,
         reactions: message.reactions || [],
       }));
+
+      const result: OptimizedChatMessageWithFilters = {
+        filters: { from, to, fromUser },
+        filteringMethod: from || to ? 'client-side' : 'server-side',
+        totalReturned: messageList.length,
+        hasMore: false, // We don't have access to @odata.nextLink after the client processes it
+        messages: messageList,
+      };
 
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(
-              {
-                filters: { from, to, fromUser },
-                filteringMethod: from || to ? 'client-side' : 'server-side',
-                totalReturned: messageList.length,
-                hasMore: !!response['@odata.nextLink'],
-                messages: messageList,
-              },
-              null,
-              2,
-            ),
+            text: JSON.stringify(result, null, 2),
           },
         ],
       };

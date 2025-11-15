@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
-import type { User, UserSummary } from '../../types/graph.js';
+import type { OptimizedUser } from '../tools.types.js';
 
 const schema = z.object({
   userId: z.string().describe('User ID or email address'),
@@ -18,9 +18,9 @@ export const getUserTool = (server: McpServer) => {
     },
     async ({ userId }) => {
       const client = await graphService.getClient();
-      const user = (await client.api(`/users/${userId}`).get()) as User;
+      const user = await client.getUser({ userId });
 
-      const userSummary: UserSummary = {
+      const userSummary: OptimizedUser = {
         displayName: user.displayName,
         mail: user.mail,
         id: user.id,

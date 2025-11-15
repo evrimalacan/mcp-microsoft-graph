@@ -174,6 +174,7 @@ Only after verification, implement the tool following this structure:
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { graphService } from "../../services/graph.js";
+import type { OptimizedResponseType } from "../tools.types.js";
 
 // Define schema with descriptions from official docs
 // Include ISO datetime format examples for date parameters
@@ -193,29 +194,24 @@ export const toolNameTool = (server: McpServer) => {
     async (params) => {
       const client = await graphService.getClient();
 
-      // Use SDK fluent API methods instead of manual query string construction
-      let query = client.api('/endpoint');
+      // Call typed client method
+      const response = await client.someMethod({
+        paramName: params.paramName,
+        dateParam: params.dateParam,
+      });
 
-      if (params.top) {
-        query = query.top(params.top);
-      }
+      // Transform to optimized type for MCP response
+      const optimized: OptimizedResponseType = {
+        id: response.id,
+        relevantField: response.relevantField,
+        // Only include fields needed for MCP, reducing token usage
+      };
 
-      if (params.orderBy) {
-        query = query.orderby('createdDateTime desc');
-      }
-
-      if (params.filter) {
-        query = query.filter('someField eq "value"');
-      }
-
-      const response = await query.get();
-
-      // Process and return response
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify(response, null, 2),
+            text: JSON.stringify(optimized, null, 2),
           },
         ],
       };
@@ -406,41 +402,129 @@ npx @modelcontextprotocol/inspector node dist/index.js
 - **Graph SDK for JavaScript**: https://github.com/microsoftgraph/msgraph-sdk-javascript
   - We use this SDK - check for updates periodically
 
-## Project Structure
+## Project Architecture
+
+This project follows a **clean layered architecture** pattern inspired by mcp-bitbucket-server:
+
+### Layer 1: Client Layer (`src/client/`)
+Pure, typed API client - library-grade, framework-agnostic, reusable code.
+
+- **`graph.client.ts`**: `GraphClient` class with typed methods for all Graph API operations
+  - User operations: `getCurrentUser()`, `getUser()`, `searchUsers()`
+  - Chat operations: `searchChats()`, `createChat()`
+  - Message operations: `getChatMessages()`, `sendChatMessage()`, `searchMessages()`, `setMessageReaction()`, `unsetMessageReaction()`
+  - Mail operations: `listMails()`, `sendMail()`
+  - Calendar operations: `getCalendarEvents()`, `createCalendarEvent()`
+
+- **`graph.types.ts`**: Complete type system
+  - Re-exports from `@microsoft/microsoft-graph-types` (official SDK types)
+  - API response wrapper types (`GraphApiResponse`, `SearchResponse`)
+  - Method parameter types (`GetUserParams`, `SendChatMessageParams`, etc.)
+  - All types prefixed by purpose (e.g., `GetUserParams` for input, `User` for output)
+
+- **`index.ts`**: Barrel export for clean imports
+
+**Key Principle**: The client layer has NO knowledge of MCP. It's a standalone Graph API client that could be extracted as an npm package.
+
+### Layer 2: Service Layer (`src/services/`)
+Authentication and client instantiation.
+
+- **`graph.ts`**: `GraphService` singleton
+  - `getClient()`: Returns typed `GraphClient` instance (for tools)
+  - `getSDKClient()`: Returns raw SDK `Client` (for utilities that need direct API access)
+  - Handles authentication, token management, and caching
+  - Wraps SDK client in our typed GraphClient
+
+### Layer 3: Tools Layer (`src/tools/`)
+MCP-specific logic and response optimization.
+
+- **`tools.types.ts`**: Optimized response types for MCP
+  - `OptimizedUser`, `OptimizedChat`, `OptimizedChatMessage`, etc.
+  - Strip unnecessary fields to reduce token usage
+  - Separate from API types (different purpose)
+
+- **Domain-organized tool files**:
+  - `users/`: User management tools
+  - `chats/`: Chat container management
+  - `messages/`: Message content operations
+  - `mail/`: Email operations
+  - `calendar/`: Calendar event operations
+
+**Tool Pattern**:
+```typescript
+import { graphService } from '../../services/graph.js';
+import type { OptimizedUser } from '../tools.types.js';
+
+export const getUserTool = (server: McpServer) => {
+  server.registerTool('get_user', {}, async ({ userId }) => {
+    const client = await graphService.getClient();
+    const user = await client.getUser({ userId });
+
+    // Transform to optimized type
+    const optimized: OptimizedUser = {
+      id: user.id,
+      displayName: user.displayName,
+      mail: user.mail,
+    };
+
+    return { content: [{ type: 'text', text: JSON.stringify(optimized, null, 2) }] };
+  });
+};
+```
+
+### Project Structure
 
 ```
 src/
 ├── config.ts                 # Environment variables with validation
 ├── index.ts                  # Main entry point, server setup
-├── services/
-│   └── graph.ts             # GraphService singleton for API client
-├── tools/
-│   ├── index.ts             # Main registerTools function
-│   ├── users/               # User management tools
-│   │   ├── index.ts         # Barrel export
+├── client/                   # Layer 1: Pure API client
+│   ├── graph.client.ts       # GraphClient class with typed methods
+│   ├── graph.types.ts        # API types and parameter types
+│   └── index.ts              # Barrel export
+├── services/                 # Layer 2: Service wrapper
+│   └── graph.ts              # GraphService singleton (auth + client)
+├── tools/                    # Layer 3: MCP tools
+│   ├── index.ts              # Main registerTools function
+│   ├── tools.types.ts        # Optimized MCP response types
+│   ├── users/                # User management tools
+│   │   ├── index.ts
 │   │   ├── get_current_user.ts
 │   │   ├── search_users.ts
 │   │   └── get_user.ts
-│   ├── chats/               # Chat management tools
-│   │   ├── index.ts         # Barrel export
+│   ├── chats/                # Chat management tools
+│   │   ├── index.ts
 │   │   ├── search_chats.ts
 │   │   └── create_chat.ts
-│   └── messages/            # Message operations tools
-│       ├── index.ts         # Barrel export
-│       ├── get_chat_messages.ts
-│       ├── send_chat_message.ts
-│       └── search_messages.ts
-└── types/
-    └── graph.ts             # TypeScript types for Graph API responses
+│   ├── messages/             # Message operations tools
+│   │   ├── index.ts
+│   │   ├── get_chat_messages.ts
+│   │   ├── send_chat_message.ts
+│   │   ├── search_messages.ts
+│   │   ├── set_message_reaction.ts
+│   │   └── unset_message_reaction.ts
+│   ├── mail/                 # Email operations tools
+│   │   ├── index.ts
+│   │   ├── list_mails.ts
+│   │   └── send_mail.ts
+│   └── calendar/             # Calendar operations tools
+│       ├── index.ts
+│       ├── get_calendar_events.ts
+│       └── create_calendar_event.ts
+└── utils/                    # Utility functions
+    ├── markdown.ts           # Markdown to HTML conversion
+    ├── users.ts              # User lookup utilities
+    └── attachments.ts        # Attachment handling
 ```
 
-### Domain Organization
+### Architecture Benefits
 
-The tool structure follows clear domain separation:
-
-- **users/**: User profile and search operations
-- **chats/**: Chat container management (create, list conversations)
-- **messages/**: Message content operations (get, send, search within chats)
+✅ **Clean Separation**: Client layer is pure, reusable code
+✅ **Type Safety**: Every API call has explicit parameter and return types
+✅ **Maintainability**: API changes only affect client layer
+✅ **Token Efficiency**: Tools optimize responses without polluting client types
+✅ **Testability**: Client can be easily mocked
+✅ **Reusability**: Client layer could be extracted as `@yourcompany/graph-client` npm package
 
 ## Current Tool Implementations
 

@@ -9,6 +9,7 @@ import {
 } from '@azure/identity';
 import { cachePersistencePlugin } from '@azure/identity-cache-persistence';
 import { Client } from '@microsoft/microsoft-graph-client';
+import { GraphClient } from '../client/index.js';
 import { CLIENT_ID, SCOPES, TENANT_ID } from '../config.js';
 
 // Register the persistent cache plugin (must be done once at module load)
@@ -27,7 +28,8 @@ useIdentityPlugin(cachePersistencePlugin);
  * This eliminates the need for hourly re-authentication!
  */
 export class GraphService {
-  private client: Client | null = null;
+  private sdkClient: Client | null = null;
+  private graphClient: GraphClient | null = null;
   private credential: DeviceCodeCredential | null = null;
 
   /**
@@ -45,9 +47,23 @@ export class GraphService {
     }
   }
 
-  async getClient(): Promise<Client> {
-    if (this.client) {
-      return this.client;
+  async getClient(): Promise<GraphClient> {
+    if (this.graphClient) {
+      return this.graphClient;
+    }
+
+    // Get the SDK client
+    const sdkClient = await this.getSDKClient();
+
+    // Wrap it in our typed GraphClient
+    this.graphClient = new GraphClient(sdkClient);
+
+    return this.graphClient;
+  }
+
+  async getSDKClient(): Promise<Client> {
+    if (this.sdkClient) {
+      return this.sdkClient;
     }
 
     // Load the AuthenticationRecord if it exists
@@ -68,7 +84,7 @@ export class GraphService {
     });
 
     // Create Graph client with auth provider that uses credential
-    this.client = Client.initWithMiddleware({
+    this.sdkClient = Client.initWithMiddleware({
       authProvider: {
         getAccessToken: async () => {
           try {
@@ -97,7 +113,7 @@ export class GraphService {
       },
     });
 
-    return this.client;
+    return this.sdkClient;
   }
 
   /**
@@ -105,7 +121,8 @@ export class GraphService {
    * Useful for testing or when you want to force token refresh.
    */
   clearCache(): void {
-    this.client = null;
+    this.sdkClient = null;
+    this.graphClient = null;
     this.credential = null;
   }
 }

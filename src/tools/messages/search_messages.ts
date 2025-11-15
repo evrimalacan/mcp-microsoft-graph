@@ -1,7 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import type { SearchHit } from '../../client/graph.types.js';
 import { graphService } from '../../services/graph.js';
-import type { SearchHit, SearchRequest, SearchResponse } from '../../types/graph.js';
+import type { OptimizedSearchHit, OptimizedSearchResult } from '../tools.types.js';
 
 const schema = z.object({
   query: z
@@ -30,44 +31,15 @@ export const searchMessagesTool = (server: McpServer) => {
     async ({ query, scope, limit, enableTopResults, mentions, from, fromUser }) => {
       const client = await graphService.getClient();
 
-      const queryParts: string[] = [];
-
-      if (query) {
-        queryParts.push(query);
-      }
-
-      if (mentions) {
-        queryParts.push(`mentions:${mentions}`);
-      }
-
-      if (from) {
-        const dateOnly = from.split('T')[0];
-        queryParts.push(`sent>=${dateOnly}`);
-      }
-
-      if (fromUser) {
-        queryParts.push(`from:${fromUser}`);
-      }
-
-      let enhancedQuery = queryParts.length > 0 ? queryParts.join(' AND ') : '*';
-
-      if (scope === 'channels') {
-        enhancedQuery = `${enhancedQuery} AND (channelIdentity/channelId:*)`;
-      } else if (scope === 'chats') {
-        enhancedQuery = `${enhancedQuery} AND (chatId:* AND NOT channelIdentity/channelId:*)`;
-      }
-
-      const searchRequest: SearchRequest = {
-        entityTypes: ['chatMessage'],
-        query: {
-          queryString: enhancedQuery,
-        },
-        from: 0,
-        size: limit,
+      const response = await client.searchMessages({
+        query,
+        scope,
+        limit,
         enableTopResults,
-      };
-
-      const response = (await client.api('/search/query').post({ requests: [searchRequest] })) as SearchResponse;
+        mentions,
+        from,
+        fromUser,
+      });
 
       if (!response?.value?.length || !response.value[0]?.hitsContainers?.length) {
         return {
@@ -81,7 +53,7 @@ export const searchMessagesTool = (server: McpServer) => {
       }
 
       const hits = response.value[0].hitsContainers[0].hits;
-      const searchResults = hits.map((hit: SearchHit) => ({
+      const searchResults: OptimizedSearchHit[] = hits.map((hit: SearchHit) => ({
         id: hit.resource.id,
         rank: hit.rank,
         content: hit.summary,
@@ -92,21 +64,19 @@ export const searchMessagesTool = (server: McpServer) => {
         channelId: hit.resource.channelIdentity?.channelId,
       }));
 
+      const result: OptimizedSearchResult = {
+        query,
+        scope: scope || 'all',
+        totalResults: response.value[0].hitsContainers[0].total,
+        results: searchResults,
+        moreResultsAvailable: response.value[0].hitsContainers[0].moreResultsAvailable,
+      };
+
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(
-              {
-                query,
-                scope,
-                totalResults: response.value[0].hitsContainers[0].total,
-                results: searchResults,
-                moreResultsAvailable: response.value[0].hitsContainers[0].moreResultsAvailable,
-              },
-              null,
-              2,
-            ),
+            text: JSON.stringify(result, null, 2),
           },
         ],
       };

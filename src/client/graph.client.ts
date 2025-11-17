@@ -222,13 +222,13 @@ export class GraphClient {
 
   async setMessageReaction(params: SetMessageReactionParams): Promise<void> {
     await this.client
-      .api(`/me/chats/${params.chatId}/messages/${params.messageId}/setReaction`)
+      .api(`/chats/${params.chatId}/messages/${params.messageId}/setReaction`)
       .post({ reactionType: params.reactionType });
   }
 
   async unsetMessageReaction(params: UnsetMessageReactionParams): Promise<void> {
     await this.client
-      .api(`/me/chats/${params.chatId}/messages/${params.messageId}/unsetReaction`)
+      .api(`/chats/${params.chatId}/messages/${params.messageId}/unsetReaction`)
       .post({ reactionType: params.reactionType });
   }
 

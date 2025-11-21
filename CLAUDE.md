@@ -634,6 +634,34 @@ npm run lint
 npx tsc --noEmit
 ```
 
+## Release Workflow
+
+When asked to release/publish changes, follow this workflow:
+
+1. **Check commit patterns** - Review recent commits with `git log --oneline -5` to match the commit message style (e.g., "Add X", "Fix Y", "Refactor Z")
+
+2. **Bump version** - Use `npm version patch --no-git-tag-version` (or minor/major as appropriate)
+
+3. **Commit changes** - Stage all files and commit with a descriptive message following the project's patterns
+
+4. **Push to all remotes** - This project has multiple remotes:
+   ```bash
+   git push origin main && git push github main
+   ```
+
+5. **Tag the release** - Create and push the version tag to all remotes:
+   ```bash
+   git tag v1.x.x
+   git push origin v1.x.x && git push github v1.x.x
+   ```
+
+6. **Publish to npm** - Request OTP from user, then:
+   ```bash
+   npm publish --otp=XXXXXX
+   ```
+
+**Note**: OTP (One-Time Password) will be provided by the user for npm publish.
+
 ## Testing API Endpoints Directly
 
 To verify what data the Microsoft Graph API returns for any endpoint, use the built `graphService` to make direct API calls. This is useful for debugging and checking response structures before implementing tools.

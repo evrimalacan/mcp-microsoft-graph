@@ -2,6 +2,7 @@ import type { Client } from '@microsoft/microsoft-graph-client';
 import { markdownToHtml } from '../utils/markdown.js';
 import { processMentionsInHtml } from '../utils/users.js';
 import type {
+  CallTranscript,
   Chat,
   ChatMessage,
   CreateCalendarEventParams,
@@ -9,10 +10,15 @@ import type {
   Event,
   GetCalendarEventsParams,
   GetChatMessagesParams,
+  GetChatParams,
+  GetMeetingByJoinUrlParams,
+  GetTranscriptContentParams,
   GetUserParams,
   GraphApiResponse,
   ListMailsParams,
+  ListTranscriptsParams,
   Message,
+  OnlineMeeting,
   SearchChatsParams,
   SearchMessagesParams,
   SearchRequest,
@@ -48,6 +54,10 @@ export class GraphClient {
   }
 
   // ===== Chat Operations =====
+
+  async getChat(params: GetChatParams): Promise<Chat> {
+    return await this.client.api(`/me/chats/${params.chatId}`).expand('members').get();
+  }
 
   async searchChats(params: SearchChatsParams): Promise<Chat[]> {
     let query = this.client.api('/me/chats').expand('members');
@@ -385,5 +395,50 @@ export class GraphClient {
     }
 
     return await this.client.api('/me/events').post(event);
+  }
+
+  // ===== Transcript Operations =====
+
+  async getMeetingByJoinUrl(params: GetMeetingByJoinUrlParams): Promise<OnlineMeeting | null> {
+    const response = (await this.client
+      .api('/me/onlineMeetings')
+      .filter(`JoinWebUrl eq '${params.joinWebUrl}'`)
+      .get()) as GraphApiResponse<OnlineMeeting>;
+
+    return response.value?.[0] || null;
+  }
+
+  async listTranscripts(params: ListTranscriptsParams): Promise<CallTranscript[]> {
+    const response = (await this.client
+      .api(`/me/onlineMeetings/${params.meetingId}/transcripts`)
+      .get()) as GraphApiResponse<CallTranscript>;
+
+    return response.value || [];
+  }
+
+  async getTranscriptContent(params: GetTranscriptContentParams): Promise<string> {
+    const stream = await this.client
+      .api(`/me/onlineMeetings/${params.meetingId}/transcripts/${params.transcriptId}/content`)
+      .query({ $format: 'text/vtt' })
+      .get();
+
+    // Convert stream to text
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+
+    const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const combined = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      combined.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    return new TextDecoder('utf-8').decode(combined);
   }
 }

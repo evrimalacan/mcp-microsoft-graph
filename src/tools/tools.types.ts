@@ -29,11 +29,16 @@ export interface OptimizedUser {
 
 // ===== Chat Types =====
 
+export interface OptimizedChatMember {
+  displayName?: string | null;
+  email?: string | null;
+}
+
 export interface OptimizedChat {
   id?: string;
   topic?: string | null;
   chatType?: ChatType;
-  members?: string; // Comma-separated member names
+  members?: OptimizedChatMember[];
 }
 
 // ===== Message Types =====

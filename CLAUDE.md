@@ -627,9 +627,58 @@ npm test
 # Build for production
 npm run build
 
+# Lint and format (uses Biome)
+npm run lint
+
 # Type checking
 npx tsc --noEmit
 ```
+
+## Testing API Endpoints Directly
+
+To verify what data the Microsoft Graph API returns for any endpoint, use the built `graphService` to make direct API calls. This is useful for debugging and checking response structures before implementing tools.
+
+**First, ensure the project is built:**
+```bash
+npm run build
+```
+
+**Then run a one-liner to test any endpoint:**
+
+```bash
+# Test listing chats with members expanded
+node -e "
+import('./dist/services/graph.js').then(async ({ graphService }) => {
+  const client = await graphService.getSDKClient();
+  const response = await client.api('/me/chats').expand('members').top(1).get();
+  console.log(JSON.stringify(response.value[0], null, 2));
+}).catch(console.error);
+"
+
+# Test getting a specific chat by ID
+node -e "
+import('./dist/services/graph.js').then(async ({ graphService }) => {
+  const client = await graphService.getSDKClient();
+  const response = await client.api('/me/chats/19:your-chat-id@thread.v2').expand('members').get();
+  console.log(JSON.stringify(response, null, 2));
+}).catch(console.error);
+"
+
+# Test any other endpoint
+node -e "
+import('./dist/services/graph.js').then(async ({ graphService }) => {
+  const client = await graphService.getSDKClient();
+  const response = await client.api('/me/messages').top(5).get();
+  console.log(JSON.stringify(response.value, null, 2));
+}).catch(console.error);
+"
+```
+
+**Key points:**
+- Uses `graphService.getSDKClient()` which returns the raw Microsoft Graph SDK client
+- Authenticates automatically using stored credentials
+- Supports all SDK fluent methods: `.expand()`, `.top()`, `.filter()`, `.select()`, `.orderby()`
+- Output is raw JSON from the API - useful for seeing all available fields
 
 ## Environment Setup
 

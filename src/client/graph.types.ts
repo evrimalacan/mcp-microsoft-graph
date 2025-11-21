@@ -1,6 +1,7 @@
 // Re-export official Microsoft Graph types
 export type {
   Attendee,
+  CallTranscript,
   Channel,
   ChannelMembershipType,
   Chat,
@@ -16,6 +17,7 @@ export type {
   Location,
   Message,
   NullableOption,
+  OnlineMeeting,
   Team,
   TeamSpecialization,
   TeamsAppInstallation,
@@ -106,6 +108,10 @@ export interface SearchUsersParams {
 }
 
 // Chat operations
+export interface GetChatParams {
+  chatId: string;
+}
+
 export interface SearchChatsParams {
   searchTerm?: string;
   memberName?: string;
@@ -203,4 +209,18 @@ export interface CreateCalendarEventParams {
   >;
   location?: string;
   isOnlineMeeting?: boolean;
+}
+
+// Transcript operations
+export interface GetMeetingByJoinUrlParams {
+  joinWebUrl: string;
+}
+
+export interface ListTranscriptsParams {
+  meetingId: string;
+}
+
+export interface GetTranscriptContentParams {
+  meetingId: string;
+  transcriptId: string;
 }

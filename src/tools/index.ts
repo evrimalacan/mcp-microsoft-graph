@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createCalendarEventTool, getCalendarEventsTool } from './calendar/index.js';
-import { createChatTool, searchChatsTool } from './chats/index.js';
+import { createChatTool, getChatTool, searchChatsTool } from './chats/index.js';
 import { listMailsTool, sendMailTool } from './mail/index.js';
 import {
   getChatMessagesTool,
@@ -9,6 +9,7 @@ import {
   setMessageReactionTool,
   unsetMessageReactionTool,
 } from './messages/index.js';
+import { getMeetingTranscriptTool, listMeetingTranscriptsTool } from './transcripts/index.js';
 import { getCurrentUserTool, getUserTool, searchUsersTool } from './users/index.js';
 
 export function registerTools(server: McpServer) {
@@ -18,6 +19,7 @@ export function registerTools(server: McpServer) {
   getUserTool(server);
 
   // Chat tools
+  getChatTool(server);
   searchChatsTool(server);
   createChatTool(server);
 
@@ -35,4 +37,8 @@ export function registerTools(server: McpServer) {
   // Calendar tools
   getCalendarEventsTool(server);
   createCalendarEventTool(server);
+
+  // Transcript tools
+  listMeetingTranscriptsTool(server);
+  getMeetingTranscriptTool(server);
 }

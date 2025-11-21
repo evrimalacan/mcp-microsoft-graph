@@ -31,7 +31,10 @@ export const searchChatsTool = (server: McpServer) => {
         id: chat.id,
         topic: chat.topic,
         chatType: chat.chatType,
-        members: chat.members?.map((member: ConversationMember) => member.displayName).join(', '),
+        members: chat.members?.map((member: ConversationMember & { email?: string }) => ({
+          displayName: member.displayName,
+          email: member.email,
+        })),
       }));
 
       return {

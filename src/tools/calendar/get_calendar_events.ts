@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
-import type { OptimizedEvent } from '../tools.types.js';
+import { optimizeEvent } from './utils.js';
 
 const schema = z.object({
   from: z
@@ -39,16 +39,7 @@ export const getCalendarEventsTool = (server: McpServer) => {
         limit,
       });
 
-      const optimizedEvents: OptimizedEvent[] = events.map((event) => ({
-        id: event.id,
-        subject: event.subject || undefined,
-        start: event.start || undefined,
-        end: event.end || undefined,
-        location: event.location || undefined,
-        isOnlineMeeting: event.isOnlineMeeting || undefined,
-        onlineMeeting: event.onlineMeeting || undefined,
-        attendees: event.attendees || undefined,
-      }));
+      const optimizedEvents = events.map(optimizeEvent);
 
       return {
         content: [

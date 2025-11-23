@@ -103,13 +103,24 @@ export interface OptimizedMail {
 
 // ===== Calendar Types =====
 
+export interface OptimizedLocation {
+  name?: string;
+  type?: string; // "conferenceRoom", "default", etc.
+}
+
+export interface OptimizedAttendee {
+  name?: string;
+  email?: string;
+  status?: string; // "accepted", "declined", "tentative", "none"
+}
+
 export interface OptimizedEvent {
   id?: string;
   subject?: string;
   start?: any; // Keep as any to avoid complex NullableOption type issues
   end?: any;
-  location?: any;
-  attendees?: any[];
+  location?: OptimizedLocation;
+  attendees?: OptimizedAttendee[];
   isOnlineMeeting?: boolean;
-  onlineMeeting?: any;
+  chatId?: string; // Meeting chat ID for online meetings (extracted from joinUrl)
 }

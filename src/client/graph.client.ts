@@ -1,5 +1,6 @@
 import type { Client } from '@microsoft/microsoft-graph-client';
 import { markdownToHtml } from '../utils/markdown.js';
+import { escapeODataString } from '../utils/odata.js';
 import { processMentionsInHtml } from '../utils/users.js';
 import type {
   CallTranscript,
@@ -65,11 +66,15 @@ export class GraphClient {
     const filters: string[] = [];
 
     if (params.searchTerm) {
-      filters.push(`contains(topic, '${params.searchTerm}')`);
+      // Escape special characters (e.g., apostrophes) to prevent OData injection
+      const escapedTerm = escapeODataString(params.searchTerm);
+      filters.push(`contains(topic, '${escapedTerm}')`);
     }
 
     if (params.memberName) {
-      filters.push(`members/any(c:contains(c/displayName, '${params.memberName}'))`);
+      // Escape special characters (e.g., apostrophes) to prevent OData injection
+      const escapedName = escapeODataString(params.memberName);
+      filters.push(`members/any(c:contains(c/displayName, '${escapedName}'))`);
     }
 
     if (filters.length > 0) {

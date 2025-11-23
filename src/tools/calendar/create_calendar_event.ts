@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
-import type { OptimizedEvent } from '../tools.types.js';
+import { optimizeEvent } from './utils.js';
 
 const schema = z.object({
   subject: z.string().describe('Event title/subject'),
@@ -49,16 +49,7 @@ export const createCalendarEventTool = (server: McpServer) => {
         isOnlineMeeting,
       });
 
-      const optimizedEvent: OptimizedEvent = {
-        id: newEvent.id,
-        subject: newEvent.subject || undefined,
-        start: newEvent.start || undefined,
-        end: newEvent.end || undefined,
-        location: newEvent.location || undefined,
-        isOnlineMeeting: newEvent.isOnlineMeeting || undefined,
-        onlineMeeting: newEvent.onlineMeeting || undefined,
-        attendees: newEvent.attendees || undefined,
-      };
+      const optimizedEvent = optimizeEvent(newEvent);
 
       return {
         content: [

@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
+import { extractMeetingInfoFromJoinUrl } from '../../utils/teams.js';
 
 const schema = z.object({
   chatId: z.string().describe('The meeting chat ID (e.g., "19:meeting_YzAxMGQ3NDct...@thread.v2")'),
@@ -28,20 +29,27 @@ export const listMeetingTranscriptsTool = (server: McpServer) => {
         };
       }
 
-      // Step 2: Find the online meeting by joinWebUrl
-      const meeting = await client.getMeetingByJoinUrl({ joinWebUrl });
-
-      if (!meeting || !meeting.id) {
+      // Step 2: Extract meetingId from joinWebUrl (no API call needed!)
+      let meetingId: string;
+      try {
+        const meetingInfo = extractMeetingInfoFromJoinUrl(joinWebUrl);
+        meetingId = meetingInfo.meetingId;
+      } catch (error) {
         return {
-          content: [{ type: 'text', text: JSON.stringify({ error: 'Online meeting not found for this chat' }) }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ error: `Failed to extract meeting ID from join URL: ${error}` }),
+            },
+          ],
         };
       }
 
       // Step 3: Get transcripts for this meeting
-      const transcripts = await client.listTranscripts({ meetingId: meeting.id });
+      const transcripts = await client.listTranscripts({ meetingId });
 
       const result = {
-        meetingId: meeting.id,
+        meetingId,
         transcripts: transcripts.map((t) => ({
           id: t.id,
           createdDateTime: t.createdDateTime,

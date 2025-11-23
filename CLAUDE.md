@@ -440,6 +440,8 @@ MCP-specific logic and response optimization.
 
 - **`tools.types.ts`**: Optimized response types for MCP
   - `OptimizedUser`, `OptimizedChat`, `OptimizedChatMessage`, etc.
+  - `OptimizedEvent` with `chatId` for meeting transcript retrieval
+  - `OptimizedLocation` (name, type) and `OptimizedAttendee` (name, email, status)
   - Strip unnecessary fields to reduce token usage
   - Separate from API types (different purpose)
 
@@ -449,6 +451,7 @@ MCP-specific logic and response optimization.
   - `messages/`: Message content operations
   - `mail/`: Email operations
   - `calendar/`: Calendar event operations
+  - `transcripts/`: Meeting transcript retrieval
 
 **Tool Pattern**:
 ```typescript
@@ -494,6 +497,7 @@ src/
 │   │   └── get_user.ts
 │   ├── chats/                # Chat management tools
 │   │   ├── index.ts
+│   │   ├── get_chat.ts
 │   │   ├── search_chats.ts
 │   │   └── create_chat.ts
 │   ├── messages/             # Message operations tools
@@ -507,14 +511,22 @@ src/
 │   │   ├── index.ts
 │   │   ├── list_mails.ts
 │   │   └── send_mail.ts
-│   └── calendar/             # Calendar operations tools
+│   ├── calendar/             # Calendar operations tools
+│   │   ├── index.ts
+│   │   ├── get_calendar_events.ts
+│   │   ├── create_calendar_event.ts
+│   │   └── utils.ts          # Shared event optimization helper
+│   └── transcripts/          # Meeting transcript tools
 │       ├── index.ts
-│       ├── get_calendar_events.ts
-│       └── create_calendar_event.ts
+│       ├── list_meeting_transcripts.ts
+│       └── get_meeting_transcript.ts
 └── utils/                    # Utility functions
     ├── markdown.ts           # Markdown to HTML conversion
     ├── users.ts              # User lookup utilities
-    └── attachments.ts        # Attachment handling
+    ├── attachments.ts        # Attachment handling
+    ├── teams.ts              # Teams URL parsing (meetingId, chatId extraction)
+    ├── odata.ts              # OData query escaping
+    └── vtt.ts                # VTT transcript parsing
 ```
 
 ### Architecture Benefits
@@ -604,6 +616,42 @@ const response = await query.get();
 const queryString = `$top=${limit}&$orderby=createdDateTime desc`;
 const response = await client.api(`/endpoint?${queryString}`).get();
 ```
+
+### Transcript Tools
+
+#### list_meeting_transcripts
+**Location**: `src/tools/transcripts/list_meeting_transcripts.ts`
+
+Lists all transcripts for a meeting chat.
+
+- `chatId` (required): The meeting chat ID (e.g., `19:meeting_...@thread.v2`)
+
+**Internal workflow**:
+1. Gets chat to extract `joinWebUrl`
+2. Computes `meetingId` locally from `joinWebUrl` (no API call needed!)
+3. Lists transcripts for that meeting
+
+Returns `meetingId` and array of transcripts with `id`, `createdDateTime`, `endDateTime`.
+
+#### get_meeting_transcript
+**Location**: `src/tools/transcripts/get_meeting_transcript.ts`
+
+Gets the content of a specific transcript.
+
+- `meetingId` (required): From `list_meeting_transcripts` response
+- `transcriptId` (required): From `list_meeting_transcripts` response
+
+Returns cleaned text with speaker names (timestamps stripped).
+
+### Calendar Event Optimizations
+
+Calendar events (`get_calendar_events`, `create_calendar_event`) return optimized responses:
+
+- **`chatId`**: Extracted from `joinUrl` for online meetings - enables direct transcript retrieval
+- **`location`**: Simplified to `{ name, type }` (e.g., `{ name: "Wembley", type: "conferenceRoom" }`)
+- **`attendees`**: Simplified to `{ name, email, status }` (removed `type`, `time`)
+
+This reduces response size by ~50% and enables 3-call transcript retrieval (was 6 calls).
 
 ### Parameter Naming Conventions
 
@@ -707,6 +755,56 @@ import('./dist/services/graph.js').then(async ({ graphService }) => {
 - Authenticates automatically using stored credentials
 - Supports all SDK fluent methods: `.expand()`, `.top()`, `.filter()`, `.select()`, `.orderby()`
 - Output is raw JSON from the API - useful for seeing all available fields
+
+## Utility Functions
+
+### Teams URL Utilities (`src/utils/teams.ts`)
+
+Extract meeting info from Teams join URLs without API calls:
+
+```typescript
+import { extractMeetingInfoFromJoinUrl, extractChatIdFromJoinUrl } from './utils/teams.js';
+
+// Extract both meetingId and chatId
+const { meetingId, chatId } = extractMeetingInfoFromJoinUrl(joinUrl);
+
+// Extract just chatId (faster if you don't need meetingId)
+const chatId = extractChatIdFromJoinUrl(joinUrl);
+```
+
+**How it works**:
+- `chatId` = URL-decoded threadId from path (`19:meeting_...@thread.v2`)
+- `meetingId` = `base64("1*{Oid}*0**{threadId}")` where `Oid` is from URL context param
+
+This eliminates the need to call `/me/onlineMeetings?$filter=JoinWebUrl eq '...'`.
+
+### OData Utilities (`src/utils/odata.ts`)
+
+Escape special characters in OData filter strings:
+
+```typescript
+import { escapeODataString } from './utils/odata.js';
+
+// Escapes apostrophes: "Let's Talk" → "Let''s Talk"
+const escaped = escapeODataString("Let's Talk");
+const filter = `contains(topic, '${escaped}')`;
+```
+
+Used in `searchChats()` to prevent OData injection and syntax errors.
+
+### VTT Parser (`src/utils/vtt.ts`)
+
+Parse WebVTT transcript format into clean text:
+
+```typescript
+import { parseVttToText } from './utils/vtt.js';
+
+// Input: WEBVTT with timestamps and <v Speaker>text</v> tags
+// Output: "Speaker: text\n\nOther Speaker: more text"
+const cleanText = parseVttToText(vttContent);
+```
+
+Consolidates consecutive lines from the same speaker.
 
 ## Environment Setup
 

@@ -12,6 +12,25 @@ const schema = z.object({
     .describe(
       'Filter chats by member display name (case-sensitive). For best results, use the full display name (e.g., "John Smith" instead of "John")',
     ),
+  chatTypes: z
+    .array(z.enum(['oneOnOne', 'group', 'meeting']))
+    .optional()
+    .describe(
+      'Filter by chat types. Options: "oneOnOne" (1:1 conversations), "group" (group chats), "meeting" (meeting chats). Can specify multiple types. If omitted, returns all chat types.',
+    ),
+  limit: z
+    .number()
+    .min(1)
+    .max(50)
+    .optional()
+    .default(20)
+    .describe('Maximum number of chats to return (1-50). Default is 20.'),
+  skipToken: z
+    .string()
+    .optional()
+    .describe(
+      'Pagination token from previous response. Use the nextToken from a previous call to get the next page of results.',
+    ),
 });
 
 export const searchChatsTool = (server: McpServer) => {
@@ -20,14 +39,14 @@ export const searchChatsTool = (server: McpServer) => {
     {
       title: 'Search Chats',
       description:
-        'Search for chats (1:1 conversations and group chats) that the current user participates in. Supports filtering by topic name and member name. Returns chat topics, types, and participant information.',
+        'Search for chats (1:1 conversations, group chats, and meeting chats) that the current user participates in. Supports filtering by topic name, member name, and chat types. Returns chat topics, types, and participant information.',
       inputSchema: schema.shape,
     },
-    async ({ searchTerm, memberName }) => {
+    async ({ searchTerm, memberName, chatTypes, limit, skipToken }) => {
       const client = await graphService.getClient();
-      const chats = await client.searchChats({ searchTerm, memberName });
+      const result = await client.searchChats({ searchTerm, memberName, chatTypes, limit, skipToken });
 
-      const chatList: OptimizedChat[] = chats.map((chat) => ({
+      const chatList: OptimizedChat[] = result.chats.map((chat) => ({
         id: chat.id,
         topic: chat.topic,
         chatType: chat.chatType,
@@ -37,11 +56,20 @@ export const searchChatsTool = (server: McpServer) => {
         })),
       }));
 
+      // Build response with pagination info
+      const response: { chats: OptimizedChat[]; nextToken?: string } = {
+        chats: chatList,
+      };
+
+      if (result.nextToken) {
+        response.nextToken = result.nextToken;
+      }
+
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(chatList, null, 2),
+            text: JSON.stringify(response, null, 2),
           },
         ],
       };

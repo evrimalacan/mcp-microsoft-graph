@@ -21,6 +21,7 @@ import type {
   Message,
   OnlineMeeting,
   SearchChatsParams,
+  SearchChatsResult,
   SearchMessagesParams,
   SearchRequest,
   SearchResponse,
@@ -60,8 +61,17 @@ export class GraphClient {
     return await this.client.api(`/me/chats/${params.chatId}`).expand('members').get();
   }
 
-  async searchChats(params: SearchChatsParams): Promise<Chat[]> {
+  async searchChats(params: SearchChatsParams): Promise<SearchChatsResult> {
     let query = this.client.api('/me/chats').expand('members');
+
+    // Apply limit (default 20 if not specified)
+    const limit = params.limit || 20;
+    query = query.top(limit);
+
+    // Apply skipToken if provided (for pagination)
+    if (params.skipToken) {
+      query = query.query({ $skiptoken: params.skipToken });
+    }
 
     const filters: string[] = [];
 
@@ -77,12 +87,32 @@ export class GraphClient {
       filters.push(`members/any(c:contains(c/displayName, '${escapedName}'))`);
     }
 
+    if (params.chatTypes && params.chatTypes.length > 0) {
+      // Build filter for chat types using 'or' operator
+      const chatTypeFilters = params.chatTypes.map((type) => `chatType eq '${type}'`).join(' or ');
+      filters.push(`(${chatTypeFilters})`);
+    }
+
     if (filters.length > 0) {
       query = query.filter(filters.join(' and '));
     }
 
     const response = (await query.get()) as GraphApiResponse<Chat>;
-    return response.value || [];
+
+    // Extract nextToken from @odata.nextLink if present
+    let nextToken: string | undefined;
+    if (response['@odata.nextLink']) {
+      const url = new URL(response['@odata.nextLink']);
+      const token = url.searchParams.get('$skiptoken');
+      if (token) {
+        nextToken = token;
+      }
+    }
+
+    return {
+      chats: response.value || [],
+      nextToken,
+    };
   }
 
   async createChat(params: CreateChatParams): Promise<Chat> {

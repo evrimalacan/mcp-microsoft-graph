@@ -25,6 +25,9 @@ export type {
   User,
 } from '@microsoft/microsoft-graph-types';
 
+// Also import for use in interface definitions
+import type { Chat } from '@microsoft/microsoft-graph-types';
+
 // ===== API Response Wrapper Types =====
 
 export interface GraphApiResponse<T> {
@@ -115,6 +118,14 @@ export interface GetChatParams {
 export interface SearchChatsParams {
   searchTerm?: string;
   memberName?: string;
+  chatTypes?: Array<'oneOnOne' | 'group' | 'meeting'>;
+  limit?: number;
+  skipToken?: string;
+}
+
+export interface SearchChatsResult {
+  chats: Chat[];
+  nextToken?: string;
 }
 
 export interface CreateChatParams {

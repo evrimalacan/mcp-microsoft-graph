@@ -10,13 +10,14 @@ import {
   unsetMessageReactionTool,
 } from './messages/index.js';
 import { getMeetingTranscriptTool, listMeetingTranscriptsTool } from './transcripts/index.js';
-import { getCurrentUserTool, getUserTool, searchUsersTool } from './users/index.js';
+import { getCurrentUserTool, getUserTool, searchUsersTool, setStatusTool } from './users/index.js';
 
 export function registerTools(server: McpServer) {
   // User tools
   getCurrentUserTool(server);
   searchUsersTool(server);
   getUserTool(server);
+  setStatusTool(server);
 
   // Chat tools
   getChatTool(server);

@@ -33,6 +33,7 @@ function validateConfig(): GraphConfig {
     'Chat.ReadBasic',
     'Chat.ReadWrite',
     'Calendars.ReadWrite',
+    'Presence.ReadWrite',
   ];
 
   return {

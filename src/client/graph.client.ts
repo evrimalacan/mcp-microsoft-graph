@@ -29,6 +29,7 @@ import type {
   SendChatMessageParams,
   SendMailParams,
   SetMessageReactionParams,
+  SetPreferredPresenceParams,
   UnsetMessageReactionParams,
   User,
 } from './graph.types.js';
@@ -53,6 +54,14 @@ export class GraphClient {
       .get()) as GraphApiResponse<User>;
 
     return response.value ?? [];
+  }
+
+  async setPreferredPresence(params: SetPreferredPresenceParams): Promise<void> {
+    await this.client.api('/me/presence/setUserPreferredPresence').post({
+      availability: params.availability,
+      activity: params.activity || params.availability,
+      expirationDuration: params.expirationDuration,
+    });
   }
 
   // ===== Chat Operations =====

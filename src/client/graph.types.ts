@@ -197,6 +197,19 @@ export interface SendMailParams {
   bcc?: string[];
 }
 
+// Presence operations
+export interface SetPresenceParams {
+  availability: 'Available' | 'Away' | 'BeRightBack' | 'Busy' | 'DoNotDisturb' | 'InACall' | 'InAMeeting' | 'Offline' | 'PresenceUnknown' | 'Presenting';
+  activity?: 'Available' | 'Away' | 'BeRightBack' | 'Busy' | 'DoNotDisturb' | 'InACall' | 'InAMeeting' | 'Offline' | 'PresenceUnknown' | 'Presenting';
+  expirationDuration?: string; // ISO 8601 duration (e.g., 'PT1H' for 1 hour)
+}
+
+export interface SetPreferredPresenceParams {
+  availability: 'Available' | 'Away' | 'BeRightBack' | 'Busy' | 'DoNotDisturb' | 'Offline';
+  activity?: 'Available' | 'Away' | 'BeRightBack' | 'Busy' | 'DoNotDisturb' | 'Offline';
+  expirationDuration?: string; // ISO 8601 duration (e.g., 'PT8H' for 8 hours)
+}
+
 // Calendar operations
 export interface GetCalendarEventsParams {
   from?: string;

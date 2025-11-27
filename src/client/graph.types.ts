@@ -15,6 +15,8 @@ export type {
   Event,
   ItemBody,
   Location,
+  MeetingTimeSuggestion,
+  MeetingTimeSuggestionsResult,
   Message,
   NullableOption,
   OnlineMeeting,
@@ -233,6 +235,17 @@ export interface CreateCalendarEventParams {
   >;
   location?: string;
   isOnlineMeeting?: boolean;
+}
+
+// Availability operations
+export interface FindMeetingTimesParams {
+  attendees: Array<{
+    email: string;
+    type: 'required' | 'optional';
+  }>;
+  startDateTime: string; // ISO 8601 UTC format
+  endDateTime: string; // ISO 8601 UTC format
+  meetingDuration: string; // ISO 8601 duration format (e.g., 'PT30M', 'PT1H')
 }
 
 // Transcript operations

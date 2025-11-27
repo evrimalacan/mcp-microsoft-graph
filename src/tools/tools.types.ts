@@ -124,3 +124,9 @@ export interface OptimizedEvent {
   isOnlineMeeting?: boolean;
   chatId?: string; // Meeting chat ID for online meetings (extracted from joinUrl)
 }
+
+export interface OptimizedMeetingTimeSuggestion {
+  confidence: number;
+  start: string;
+  end: string;
+}

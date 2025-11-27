@@ -9,7 +9,7 @@ This is an MCP (Model Context Protocol) server for Microsoft Graph API integrati
 - Chat operations (list chats, create chats)
 - Message operations (get messages, send messages, search messages)
 - Mail operations (list emails, send emails)
-- Calendar operations (list events, create events)
+- Calendar operations (list events, create events, find meeting times)
 
 ## Authentication & Token Management
 
@@ -652,6 +652,41 @@ Calendar events (`get_calendar_events`, `create_calendar_event`) return optimize
 - **`attendees`**: Simplified to `{ name, email, status }` (removed `type`, `time`)
 
 This reduces response size by ~50% and enables 3-call transcript retrieval (was 6 calls).
+
+#### find_meeting_times
+**Location**: `src/tools/calendar/find_meeting_times.ts`
+
+Finds optimal meeting times by analyzing attendees' calendars using Microsoft's intelligent `findMeetingTimes` API.
+
+**Uses official types**: `MeetingTimeSuggestionsResult` and `MeetingTimeSuggestion` from `@microsoft/microsoft-graph-types`.
+
+**Parameters**:
+- `attendees` (required): Array of `{ email: string, type: 'required' | 'optional' }` objects
+- `startDateTime` (required): Start of search window (ISO 8601 UTC, e.g., '2025-11-28T07:00:00Z')
+- `endDateTime` (required): End of search window (ISO 8601 UTC, e.g., '2025-11-29T00:00:00Z')
+- `meetingDuration` (required): Duration in ISO 8601 format (e.g., 'PT30M' for 30 min, 'PT1H' for 1 hour)
+
+**Hardcoded behavior**:
+- `isOrganizerOptional: true` - Agent (authenticated user) doesn't affect availability
+- `activityDomain: 'work'` - Only searches during working hours
+- `minimumAttendeePercentage: 100` - All required attendees must be available
+- `maxCandidates: 10` - Returns up to 10 suggestions
+
+**Response**: Optimized array of suggestions (stripped `attendeeAvailability` to reduce tokens):
+```json
+[
+  {
+    "confidence": 100,
+    "start": "2025-11-28T12:00:00.0000000",
+    "end": "2025-11-28T12:30:00.0000000"
+  }
+]
+```
+
+**Key features**:
+- Respects working hours automatically (no need to calculate timezone overlaps)
+- Returns ranked suggestions with confidence scores (0-100)
+- Supports optional attendees (but availability not included in response for token efficiency)
 
 ### Parameter Naming Conventions
 

@@ -9,6 +9,7 @@ import type {
   CreateCalendarEventParams,
   CreateChatParams,
   Event,
+  FindMeetingTimesParams,
   GetCalendarEventsParams,
   GetChatMessagesParams,
   GetChatParams,
@@ -18,6 +19,7 @@ import type {
   GraphApiResponse,
   ListMailsParams,
   ListTranscriptsParams,
+  MeetingTimeSuggestionsResult,
   Message,
   OnlineMeeting,
   SearchChatsParams,
@@ -439,6 +441,38 @@ export class GraphClient {
     }
 
     return await this.client.api('/me/events').post(event);
+  }
+
+  async findMeetingTimes(params: FindMeetingTimesParams): Promise<MeetingTimeSuggestionsResult> {
+    const requestBody = {
+      attendees: params.attendees.map((attendee) => ({
+        type: attendee.type,
+        emailAddress: {
+          address: attendee.email,
+        },
+      })),
+      timeConstraint: {
+        activityDomain: 'work',
+        timeSlots: [
+          {
+            start: {
+              dateTime: params.startDateTime,
+              timeZone: 'UTC',
+            },
+            end: {
+              dateTime: params.endDateTime,
+              timeZone: 'UTC',
+            },
+          },
+        ],
+      },
+      meetingDuration: params.meetingDuration,
+      isOrganizerOptional: true,
+      minimumAttendeePercentage: 100,
+      maxCandidates: 10,
+    };
+
+    return await this.client.api('/me/findMeetingTimes').post(requestBody);
   }
 
   // ===== Transcript Operations =====

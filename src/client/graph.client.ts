@@ -189,7 +189,7 @@ export class GraphClient {
     const messagePayload: Record<string, unknown> = {
       body: {
         content: mentionResult.content,
-        contentType: mentionResult.contentType,
+        contentType: params.format === 'markdown' ? 'html' : mentionResult.contentType,
       },
       importance: params.importance || 'normal',
     };
@@ -217,7 +217,7 @@ export class GraphClient {
     const messagePayload: Record<string, unknown> = {
       body: {
         content: mentionResult.content,
-        contentType: mentionResult.contentType,
+        contentType: params.format === 'markdown' ? 'html' : mentionResult.contentType,
       },
     };
 

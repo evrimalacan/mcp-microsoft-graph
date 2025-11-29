@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
 
 const schema = z.object({
@@ -8,9 +8,7 @@ const schema = z.object({
     .describe('Status to set (Available, Busy, DoNotDisturb, Away, BeRightBack, Offline)'),
   duration: z
     .string()
-    .describe(
-      'How long to keep this status (ISO 8601 format). Examples: PT1H (1 hour), PT4H (4 hours), P1D (1 day)',
-    ),
+    .describe('How long to keep this status (ISO 8601 format). Examples: PT1H (1 hour), PT4H (4 hours), P1D (1 day)'),
 });
 
 export const setStatusTool = (server: McpServer) => {
@@ -18,8 +16,7 @@ export const setStatusTool = (server: McpServer) => {
     'set_status',
     {
       title: 'Set User Status',
-      description:
-        'Set your Microsoft Teams status. Status persists even during calls and meetings.',
+      description: 'Set your Microsoft Teams status. Status persists even during calls and meetings.',
       inputSchema: schema.shape,
     },
     async (params) => {
@@ -35,7 +32,7 @@ export const setStatusTool = (server: McpServer) => {
         content: [
           {
             type: 'text',
-            text: `✅ Status updated to ${params.status} for ${params.duration}`,
+            text: `Status set to ${params.status} for ${params.duration}.`,
           },
         ],
       };

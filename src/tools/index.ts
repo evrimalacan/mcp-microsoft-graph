@@ -8,6 +8,7 @@ import {
   sendChatMessageTool,
   setMessageReactionTool,
   unsetMessageReactionTool,
+  updateChatMessageTool,
 } from './messages/index.js';
 import { getMeetingTranscriptTool, listMeetingTranscriptsTool } from './transcripts/index.js';
 import { getCurrentUserTool, getUserTool, searchUsersTool, setStatusTool } from './users/index.js';
@@ -27,6 +28,7 @@ export function registerTools(server: McpServer) {
   // Message tools
   getChatMessagesTool(server);
   sendChatMessageTool(server);
+  updateChatMessageTool(server);
   searchMessagesTool(server);
   setMessageReactionTool(server);
   unsetMessageReactionTool(server);

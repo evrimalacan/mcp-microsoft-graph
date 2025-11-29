@@ -17,14 +17,10 @@ const schema = z.object({
     ),
   startDateTime: z
     .string()
-    .describe(
-      "Start of time window to search within (ISO 8601 format in UTC, e.g., '2025-11-28T07:00:00Z')",
-    ),
+    .describe("Start of time window to search within (ISO 8601 format in UTC, e.g., '2025-11-28T07:00:00Z')"),
   endDateTime: z
     .string()
-    .describe(
-      "End of time window to search within (ISO 8601 format in UTC, e.g., '2025-11-29T00:00:00Z')",
-    ),
+    .describe("End of time window to search within (ISO 8601 format in UTC, e.g., '2025-11-29T00:00:00Z')"),
   meetingDuration: z
     .string()
     .describe(
@@ -52,13 +48,13 @@ export const findMeetingTimesTool = (server: McpServer) => {
       });
 
       // Optimize response: strip unnecessary fields to reduce token usage
-      const optimizedSuggestions: OptimizedMeetingTimeSuggestion[] = (
-        response.meetingTimeSuggestions || []
-      ).map((suggestion) => ({
-        confidence: suggestion.confidence || 0,
-        start: suggestion.meetingTimeSlot?.start?.dateTime || '',
-        end: suggestion.meetingTimeSlot?.end?.dateTime || '',
-      }));
+      const optimizedSuggestions: OptimizedMeetingTimeSuggestion[] = (response.meetingTimeSuggestions || []).map(
+        (suggestion) => ({
+          confidence: suggestion.confidence || 0,
+          start: suggestion.meetingTimeSlot?.start?.dateTime || '',
+          end: suggestion.meetingTimeSlot?.end?.dateTime || '',
+        }),
+      );
 
       return {
         content: [

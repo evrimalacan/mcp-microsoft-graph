@@ -150,10 +150,14 @@ export interface SendChatMessageParams {
   message: string;
   importance?: 'normal' | 'high' | 'urgent';
   format?: 'text' | 'markdown';
-  mentions?: Array<{
-    mention: string;
-    userId: string;
-  }>;
+}
+
+export interface UpdateChatMessageParams {
+  chatId: string;
+  messageId: string;
+  message: string;
+  importance?: 'normal' | 'high' | 'urgent';
+  format?: 'text' | 'markdown';
 }
 
 export interface SearchMessagesParams {
@@ -201,8 +205,28 @@ export interface SendMailParams {
 
 // Presence operations
 export interface SetPresenceParams {
-  availability: 'Available' | 'Away' | 'BeRightBack' | 'Busy' | 'DoNotDisturb' | 'InACall' | 'InAMeeting' | 'Offline' | 'PresenceUnknown' | 'Presenting';
-  activity?: 'Available' | 'Away' | 'BeRightBack' | 'Busy' | 'DoNotDisturb' | 'InACall' | 'InAMeeting' | 'Offline' | 'PresenceUnknown' | 'Presenting';
+  availability:
+    | 'Available'
+    | 'Away'
+    | 'BeRightBack'
+    | 'Busy'
+    | 'DoNotDisturb'
+    | 'InACall'
+    | 'InAMeeting'
+    | 'Offline'
+    | 'PresenceUnknown'
+    | 'Presenting';
+  activity?:
+    | 'Available'
+    | 'Away'
+    | 'BeRightBack'
+    | 'Busy'
+    | 'DoNotDisturb'
+    | 'InACall'
+    | 'InAMeeting'
+    | 'Offline'
+    | 'PresenceUnknown'
+    | 'Presenting';
   expirationDuration?: string; // ISO 8601 duration (e.g., 'PT1H' for 1 hour)
 }
 

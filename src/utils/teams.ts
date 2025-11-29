@@ -31,9 +31,7 @@ export function extractMeetingInfoFromJoinUrl(joinUrl: string): MeetingInfo {
   // Pattern: /meetup-join/19:meeting_...@thread.v2/
   const threadIdMatch = decodedUrl.match(/meetup-join\/(19:[^/]+)/);
   if (!threadIdMatch) {
-    throw new Error(
-      `Could not extract threadId from join URL: ${joinUrl.substring(0, 100)}...`
-    );
+    throw new Error(`Could not extract threadId from join URL: ${joinUrl.substring(0, 100)}...`);
   }
   const chatId = threadIdMatch[1];
 
@@ -41,9 +39,7 @@ export function extractMeetingInfoFromJoinUrl(joinUrl: string): MeetingInfo {
   // Pattern: context={"Tid":"...","Oid":"..."}
   const contextMatch = decodedUrl.match(/context=(\{[^}]+\})/);
   if (!contextMatch) {
-    throw new Error(
-      `Could not extract context from join URL: ${joinUrl.substring(0, 100)}...`
-    );
+    throw new Error(`Could not extract context from join URL: ${joinUrl.substring(0, 100)}...`);
   }
 
   let context: { Tid?: string; Oid?: string };
@@ -59,7 +55,7 @@ export function extractMeetingInfoFromJoinUrl(joinUrl: string): MeetingInfo {
 
   // Construct meetingId: base64("1*{Oid}*0**{threadId}")
   const meetingIdRaw = `1*${context.Oid}*0**${chatId}`;
-  const meetingId = Buffer.from(meetingIdRaw).toString("base64");
+  const meetingId = Buffer.from(meetingIdRaw).toString('base64');
 
   return { meetingId, chatId };
 }
@@ -76,9 +72,7 @@ export function extractChatIdFromJoinUrl(joinUrl: string): string {
   const decodedUrl = decodeURIComponent(joinUrl);
   const threadIdMatch = decodedUrl.match(/meetup-join\/(19:[^/]+)/);
   if (!threadIdMatch) {
-    throw new Error(
-      `Could not extract threadId from join URL: ${joinUrl.substring(0, 100)}...`
-    );
+    throw new Error(`Could not extract threadId from join URL: ${joinUrl.substring(0, 100)}...`);
   }
   return threadIdMatch[1];
 }

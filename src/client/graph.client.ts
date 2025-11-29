@@ -1,7 +1,7 @@
 import type { Client } from '@microsoft/microsoft-graph-client';
+import type { ChatMessageMention } from '@microsoft/microsoft-graph-types';
 import { markdownToHtml } from '../utils/markdown.js';
 import { escapeODataString } from '../utils/odata.js';
-import { processMentionsInHtml } from '../utils/users.js';
 import type {
   CallTranscript,
   Chat,
@@ -33,6 +33,7 @@ import type {
   SetMessageReactionParams,
   SetPreferredPresenceParams,
   UnsetMessageReactionParams,
+  UpdateChatMessageParams,
   User,
 } from './graph.types.js';
 
@@ -174,64 +175,61 @@ export class GraphClient {
 
   async sendChatMessage(params: SendChatMessageParams): Promise<ChatMessage> {
     let content: string;
-    let contentType: 'text' | 'html';
 
-    // Handle markdown conversion
+    // Handle markdown conversion first
     if (params.format === 'markdown') {
       content = await markdownToHtml(params.message);
-      contentType = 'html';
     } else {
       content = params.message;
-      contentType = 'text';
     }
 
-    // Process mentions if provided
-    const mentionMappings: Array<{ mention: string; userId: string; displayName: string }> = [];
-    if (params.mentions && params.mentions.length > 0) {
-      for (const mention of params.mentions) {
-        try {
-          const userResponse = await this.client.api(`/users/${mention.userId}`).select('displayName').get();
-          mentionMappings.push({
-            mention: mention.mention,
-            userId: mention.userId,
-            displayName: userResponse.displayName || mention.mention,
-          });
-        } catch (_error) {
-          mentionMappings.push({
-            mention: mention.mention,
-            userId: mention.userId,
-            displayName: mention.mention,
-          });
-        }
-      }
-    }
+    // Process inline @email mentions
+    const mentionResult = await this.processInlineMentions(content);
 
-    let finalMentions: Array<{
-      id: number;
-      mentionText: string;
-      mentioned: { user: { id: string } };
-    }> = [];
-
-    if (mentionMappings.length > 0) {
-      const result = processMentionsInHtml(content, mentionMappings);
-      content = result.content;
-      finalMentions = result.mentions;
-      contentType = 'html';
-    }
-
-    const messagePayload: any = {
+    const messagePayload: Record<string, unknown> = {
       body: {
-        content,
-        contentType,
+        content: mentionResult.content,
+        contentType: mentionResult.contentType,
       },
       importance: params.importance || 'normal',
     };
 
-    if (finalMentions.length > 0) {
-      messagePayload.mentions = finalMentions;
+    if (mentionResult.mentions.length > 0) {
+      messagePayload.mentions = mentionResult.mentions;
     }
 
     return await this.client.api(`/me/chats/${params.chatId}/messages`).post(messagePayload);
+  }
+
+  async updateChatMessage(params: UpdateChatMessageParams): Promise<void> {
+    let content: string;
+
+    // Handle markdown conversion first
+    if (params.format === 'markdown') {
+      content = await markdownToHtml(params.message);
+    } else {
+      content = params.message;
+    }
+
+    // Process inline @email mentions
+    const mentionResult = await this.processInlineMentions(content);
+
+    const messagePayload: Record<string, unknown> = {
+      body: {
+        content: mentionResult.content,
+        contentType: mentionResult.contentType,
+      },
+    };
+
+    if (params.importance) {
+      messagePayload.importance = params.importance;
+    }
+
+    if (mentionResult.mentions.length > 0) {
+      messagePayload.mentions = mentionResult.mentions;
+    }
+
+    await this.client.api(`/chats/${params.chatId}/messages/${params.messageId}`).patch(messagePayload);
   }
 
   async searchMessages(params: SearchMessagesParams): Promise<SearchResponse> {
@@ -518,5 +516,69 @@ export class GraphClient {
     }
 
     return new TextDecoder('utf-8').decode(combined);
+  }
+
+  // ===== Private Methods =====
+
+  private async processInlineMentions(
+    message: string,
+  ): Promise<{ content: string; mentions: ChatMessageMention[]; contentType: 'text' | 'html' }> {
+    const emailMentionRegex = /@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    const matches = [...message.matchAll(emailMentionRegex)];
+
+    if (matches.length === 0) {
+      return { content: message, mentions: [], contentType: 'text' };
+    }
+
+    // Resolve unique emails to user info
+    const uniqueEmails = [...new Set(matches.map((m) => m[1]))];
+    const userMap = new Map<string, { id: string; displayName: string } | null>();
+
+    for (const email of uniqueEmails) {
+      try {
+        const user = await this.client.api(`/users/${email}`).select('id,displayName').get();
+        userMap.set(email, { id: user.id, displayName: user.displayName || email });
+      } catch {
+        userMap.set(email, null);
+      }
+    }
+
+    // Assign IDs to resolvable mentions in forward order
+    const mentionData: Array<{
+      match: RegExpMatchArray;
+      userInfo: { id: string; displayName: string };
+      mentionId: number;
+    }> = [];
+
+    let mentionId = 0;
+    for (const match of matches) {
+      const userInfo = userMap.get(match[1]);
+      if (userInfo) {
+        mentionData.push({ match, userInfo, mentionId });
+        mentionId++;
+      }
+    }
+
+    // Build mentions array
+    const mentions: ChatMessageMention[] = mentionData.map((data) => ({
+      id: data.mentionId,
+      mentionText: data.userInfo.displayName,
+      mentioned: {
+        user: { id: data.userInfo.id, displayName: data.userInfo.displayName },
+      },
+    }));
+
+    // Process string replacements in reverse order to maintain correct positions
+    let processedContent = message;
+    const reversedData = [...mentionData].sort((a, b) => (b.match.index ?? 0) - (a.match.index ?? 0));
+
+    for (const data of reversedData) {
+      const atTag = `<at id="${data.mentionId}">${data.userInfo.displayName}</at>`;
+      const startIndex = data.match.index ?? 0;
+      processedContent =
+        processedContent.slice(0, startIndex) + atTag + processedContent.slice(startIndex + data.match[0].length);
+    }
+
+    return { content: processedContent, mentions, contentType: mentions.length > 0 ? 'html' : 'text' };
   }
 }

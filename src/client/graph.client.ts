@@ -4,6 +4,7 @@ import { markdownToHtml } from '../utils/markdown.js';
 import { escapeODataString } from '../utils/odata.js';
 import type {
   CallTranscript,
+  CancelCalendarEventParams,
   Chat,
   ChatMessage,
   CreateCalendarEventParams,
@@ -471,6 +472,11 @@ export class GraphClient {
     };
 
     return await this.client.api('/me/findMeetingTimes').post(requestBody);
+  }
+
+  async cancelCalendarEvent(params: CancelCalendarEventParams): Promise<void> {
+    const body = params.comment ? { Comment: params.comment } : {};
+    await this.client.api(`/me/events/${params.eventId}/cancel`).post(body);
   }
 
   // ===== Transcript Operations =====

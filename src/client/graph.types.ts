@@ -261,6 +261,11 @@ export interface CreateCalendarEventParams {
   isOnlineMeeting?: boolean;
 }
 
+export interface CancelCalendarEventParams {
+  eventId: string;
+  comment?: string;
+}
+
 // Availability operations
 export interface FindMeetingTimesParams {
   attendees: Array<{

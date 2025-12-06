@@ -7,6 +7,7 @@ const schema = z.object({
   message: z.string().describe('Message content. Use @email to mention users (e.g., @john.doe@company.com).'),
   importance: z.enum(['normal', 'high', 'urgent']).optional().describe('Message importance'),
   format: z.enum(['text', 'markdown']).optional().describe('Message format (text or markdown)'),
+  replyToId: z.string().optional().describe('Message ID to reply to'),
 });
 
 export const sendChatMessageTool = (server: McpServer) => {
@@ -18,7 +19,7 @@ export const sendChatMessageTool = (server: McpServer) => {
         'Send a message to a specific chat conversation. Supports text and markdown formatting, mentions, and importance levels.',
       inputSchema: schema.shape,
     },
-    async ({ chatId, message, importance, format }) => {
+    async ({ chatId, message, importance, format, replyToId }) => {
       const client = await graphService.getClient();
 
       const result = await client.sendChatMessage({
@@ -26,6 +27,7 @@ export const sendChatMessageTool = (server: McpServer) => {
         message,
         importance,
         format,
+        replyToId,
       });
 
       return {

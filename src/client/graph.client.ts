@@ -187,11 +187,31 @@ export class GraphClient {
     // Process inline @email mentions
     const mentionResult = await this.processInlineMentions(content);
 
+    const bodyPayload = {
+      content: mentionResult.content,
+      contentType: params.format === 'markdown' ? 'html' : mentionResult.contentType,
+    };
+
+    // Reply to a message using beta replyWithQuote endpoint
+    if (params.replyToId) {
+      const replyPayload: Record<string, unknown> = {
+        messageIds: [params.replyToId],
+        replyMessage: {
+          body: bodyPayload,
+          importance: params.importance || 'normal',
+        },
+      };
+
+      if (mentionResult.mentions.length > 0) {
+        (replyPayload.replyMessage as Record<string, unknown>).mentions = mentionResult.mentions;
+      }
+
+      return await this.client.api(`/chats/${params.chatId}/messages/replyWithQuote`).version('beta').post(replyPayload);
+    }
+
+    // Regular message
     const messagePayload: Record<string, unknown> = {
-      body: {
-        content: mentionResult.content,
-        contentType: params.format === 'markdown' ? 'html' : mentionResult.contentType,
-      },
+      body: bodyPayload,
       importance: params.importance || 'normal',
     };
 

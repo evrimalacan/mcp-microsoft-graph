@@ -150,6 +150,7 @@ export interface SendChatMessageParams {
   message: string;
   importance?: 'normal' | 'high' | 'urgent';
   format?: 'text' | 'markdown';
+  replyToId?: string;
 }
 
 export interface UpdateChatMessageParams {

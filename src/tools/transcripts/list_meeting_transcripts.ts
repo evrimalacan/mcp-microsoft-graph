@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
 import { extractMeetingInfoFromJoinUrl } from '../../utils/teams.js';
+import type { TranscriptWithExtras } from '../tools.types.js';
 
 const schema = z.object({
   chatId: z.string().describe('The meeting chat ID (e.g., "19:meeting_YzAxMGQ3NDct...@thread.v2")'),
@@ -46,15 +47,16 @@ export const listMeetingTranscriptsTool = (server: McpServer) => {
       }
 
       // Step 3: Get transcripts for this meeting
-      const transcripts = await client.listTranscripts({ meetingId });
+      // Cast to our type since SDK CallTranscript is incomplete (missing callId, endDateTime)
+      const transcripts = (await client.listTranscripts({ meetingId })) as TranscriptWithExtras[];
 
       const result = {
         meetingId,
         transcripts: transcripts.map((t) => ({
           id: t.id,
+          callId: t.callId,
           createdDateTime: t.createdDateTime,
-          // SDK type is incomplete, but API returns endDateTime
-          endDateTime: (t as unknown as { endDateTime?: string }).endDateTime,
+          endDateTime: t.endDateTime,
         })),
       };
 

@@ -130,3 +130,13 @@ export interface OptimizedMeetingTimeSuggestion {
   start: string;
   end: string;
 }
+
+// ===== Transcript Types =====
+
+// SDK CallTranscript type is incomplete - API returns callId and endDateTime
+export interface TranscriptWithExtras {
+  id?: string;
+  callId?: string;
+  createdDateTime?: string;
+  endDateTime?: string;
+}

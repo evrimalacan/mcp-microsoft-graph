@@ -206,7 +206,10 @@ export class GraphClient {
         (replyPayload.replyMessage as Record<string, unknown>).mentions = mentionResult.mentions;
       }
 
-      return await this.client.api(`/chats/${params.chatId}/messages/replyWithQuote`).version('beta').post(replyPayload);
+      return await this.client
+        .api(`/chats/${params.chatId}/messages/replyWithQuote`)
+        .version('beta')
+        .post(replyPayload);
     }
 
     // Regular message

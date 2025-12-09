@@ -34,6 +34,7 @@ function validateConfig(): GraphConfig {
     'Chat.ReadWrite',
     'Calendars.ReadWrite',
     'Presence.ReadWrite',
+    'Files.ReadWrite',
   ];
 
   return {

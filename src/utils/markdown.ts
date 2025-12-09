@@ -54,8 +54,9 @@ export async function markdownToHtml(markdown: string): Promise<string> {
       'th',
       'td',
       'img',
+      'span',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'title', 'width', 'height'],
+    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'title', 'width', 'height', 'style'],
   });
 
   return cleanHtml;
@@ -99,7 +100,8 @@ export function sanitizeHtml(html: string): string {
       'th',
       'td',
       'img',
+      'span',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'title', 'width', 'height'],
+    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'title', 'width', 'height', 'style'],
   });
 }

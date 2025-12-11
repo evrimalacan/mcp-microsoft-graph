@@ -175,20 +175,19 @@ export class GraphClient {
   }
 
   async sendChatMessage(params: SendChatMessageParams): Promise<ChatMessage> {
-    let content: string;
+    // Process inline @email mentions FIRST (before markdown mangles them)
+    const mentionResult = await this.processInlineMentions(params.message);
 
-    // Handle markdown conversion first
+    // Then handle markdown conversion
+    let content: string;
     if (params.format === 'markdown') {
-      content = await markdownToHtml(params.message);
+      content = await markdownToHtml(mentionResult.content);
     } else {
-      content = params.message;
+      content = mentionResult.content;
     }
 
-    // Process inline @email mentions
-    const mentionResult = await this.processInlineMentions(content);
-
     const bodyPayload = {
-      content: mentionResult.content,
+      content,
       contentType: params.format === 'markdown' ? 'html' : mentionResult.contentType,
     };
 
@@ -226,21 +225,20 @@ export class GraphClient {
   }
 
   async updateChatMessage(params: UpdateChatMessageParams): Promise<void> {
+    // Process inline @email mentions FIRST (before markdown mangles them)
+    const mentionResult = await this.processInlineMentions(params.message);
+
+    // Then handle markdown conversion
     let content: string;
-
-    // Handle markdown conversion first
     if (params.format === 'markdown') {
-      content = await markdownToHtml(params.message);
+      content = await markdownToHtml(mentionResult.content);
     } else {
-      content = params.message;
+      content = mentionResult.content;
     }
-
-    // Process inline @email mentions
-    const mentionResult = await this.processInlineMentions(content);
 
     const messagePayload: Record<string, unknown> = {
       body: {
-        content: mentionResult.content,
+        content,
         contentType: params.format === 'markdown' ? 'html' : mentionResult.contentType,
       },
     };

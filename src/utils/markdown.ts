@@ -24,6 +24,7 @@ export async function markdownToHtml(markdown: string): Promise<string> {
   // Sanitize HTML for security - allow common formatting tags safe for Teams
   const cleanHtml = createDOMPurify.sanitize(rawHtml, {
     ALLOWED_TAGS: [
+      'at', // Teams mentions
       'p',
       'br',
       'strong',
@@ -56,7 +57,7 @@ export async function markdownToHtml(markdown: string): Promise<string> {
       'img',
       'span',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'title', 'width', 'height', 'style'],
+    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'title', 'width', 'height', 'style', 'id'],
   });
 
   return cleanHtml;
@@ -70,6 +71,7 @@ export async function markdownToHtml(markdown: string): Promise<string> {
 export function sanitizeHtml(html: string): string {
   return createDOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
+      'at', // Teams mentions
       'p',
       'br',
       'strong',
@@ -102,6 +104,6 @@ export function sanitizeHtml(html: string): string {
       'img',
       'span',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'title', 'width', 'height', 'style'],
+    ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'title', 'width', 'height', 'style', 'id'],
   });
 }

@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
-import type { OptimizedAttachment, OptimizedChatMessage } from '../tools.types.js';
+import type { OptimizedChatMessage } from '../tools.types.js';
 
 const schema = z.object({
   chatId: z.string().describe('Chat ID'),
@@ -21,21 +21,13 @@ export const getMessageTool = (server: McpServer) => {
       const client = await graphService.getSDKClient();
       const message = await client.api(`/chats/${chatId}/messages/${messageId}`).get();
 
-      // Only include SharePoint file attachments (contentType: 'reference')
-      const fileAttachments: OptimizedAttachment[] | undefined = message.attachments
-        ?.filter((a: any) => a.contentType === 'reference' && a.contentUrl)
-        .map((a: any) => ({
-          name: a.name || undefined,
-          contentUrl: a.contentUrl || undefined,
-        }));
-
       const result: OptimizedChatMessage = {
         id: message.id,
         content: message.body?.content || undefined,
         from: message.from?.user?.displayName || undefined,
         createdDateTime: message.createdDateTime || undefined,
         reactions: message.reactions || [],
-        attachments: fileAttachments?.length ? fileAttachments : undefined,
+        attachments: message.attachments?.length ? message.attachments : undefined,
       };
 
       return {

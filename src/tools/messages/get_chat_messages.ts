@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
-import type { OptimizedAttachment, OptimizedChatMessage, OptimizedChatMessageWithFilters } from '../tools.types.js';
+import type { OptimizedChatMessage, OptimizedChatMessageWithFilters } from '../tools.types.js';
 
 const schema = z.object({
   chatId: z.string().describe('Chat ID (e.g. 19:meeting_Njhi..j@thread.v2'),
@@ -24,25 +24,14 @@ export const getChatMessagesTool = (server: McpServer) => {
       const client = await graphService.getClient();
       const messages = await client.getChatMessages({ chatId, limit, from, to, fromUser });
 
-      const messageList: OptimizedChatMessage[] = messages.map((message) => {
-        // Only include SharePoint file attachments (contentType: 'reference')
-        // Skip message references (contentType: 'messageReference') - those are just reply markers
-        const fileAttachments: OptimizedAttachment[] | undefined = message.attachments
-          ?.filter((a) => a.contentType === 'reference' && a.contentUrl)
-          .map((a) => ({
-            name: a.name || undefined,
-            contentUrl: a.contentUrl || undefined,
-          }));
-
-        return {
-          id: message.id,
-          content: message.body?.content || undefined,
-          from: message.from?.user?.displayName || undefined,
-          createdDateTime: message.createdDateTime || undefined,
-          reactions: message.reactions || [],
-          attachments: fileAttachments?.length ? fileAttachments : undefined,
-        };
-      });
+      const messageList: OptimizedChatMessage[] = messages.map((message) => ({
+        id: message.id,
+        content: message.body?.content || undefined,
+        from: message.from?.user?.displayName || undefined,
+        createdDateTime: message.createdDateTime || undefined,
+        reactions: message.reactions || [],
+        attachments: message.attachments?.length ? message.attachments : undefined,
+      }));
 
       const result: OptimizedChatMessageWithFilters = {
         filters: { from, to, fromUser },

@@ -6,6 +6,7 @@ export type {
   ChannelMembershipType,
   Chat,
   ChatMessage,
+  ChatMessageAttachment,
   ChatMessageImportance,
   ChatMessageInfo,
   ChatType,

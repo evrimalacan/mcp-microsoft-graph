@@ -10,6 +10,7 @@ import { createChatTool, getChatTool, searchChatsTool } from './chats/index.js';
 import { listMailsTool, sendMailTool } from './mail/index.js';
 import {
   getChatMessagesTool,
+  getMessageTool,
   searchMessagesTool,
   sendChatMessageTool,
   setMessageReactionTool,
@@ -33,6 +34,7 @@ export function registerTools(server: McpServer) {
 
   // Message tools
   getChatMessagesTool(server);
+  getMessageTool(server);
   sendChatMessageTool(server);
   updateChatMessageTool(server);
   searchMessagesTool(server);

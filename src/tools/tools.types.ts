@@ -43,12 +43,18 @@ export interface OptimizedChat {
 
 // ===== Message Types =====
 
+export interface OptimizedAttachment {
+  name?: string;
+  contentUrl?: string; // For download_sharepoint_file
+}
+
 export interface OptimizedChatMessage {
   id?: string;
   content?: string;
   from?: string; // Just display name, not full User object
   createdDateTime?: string;
   reactions?: any[]; // Use any[] to avoid type conflicts with ChatMessageReaction
+  attachments?: OptimizedAttachment[]; // SharePoint file attachments
 }
 
 export interface OptimizedChatMessageWithFilters {

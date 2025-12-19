@@ -8,6 +8,10 @@ const schema = z.object({
   importance: z.enum(['normal', 'high', 'urgent']).optional().describe('Message importance'),
   format: z.enum(['text', 'markdown']).optional().describe('Message format (text or markdown)'),
   replyToId: z.string().optional().describe('Message ID to reply to'),
+  attachments: z
+    .array(z.string())
+    .optional()
+    .describe('SharePoint sharing links (e.g., https://company.sharepoint.com/:f:/g/...)'),
 });
 
 export const sendChatMessageTool = (server: McpServer) => {
@@ -16,10 +20,10 @@ export const sendChatMessageTool = (server: McpServer) => {
     {
       title: 'Send Chat Message',
       description:
-        'Send a message to a specific chat conversation. Supports text and markdown formatting, mentions, and importance levels.',
+        'Send a message to a specific chat conversation. Supports text and markdown formatting, mentions, importance levels, and file attachments.',
       inputSchema: schema.shape,
     },
-    async ({ chatId, message, importance, format, replyToId }) => {
+    async ({ chatId, message, importance, format, replyToId, attachments }) => {
       const client = await graphService.getClient();
 
       const result = await client.sendChatMessage({
@@ -28,6 +32,7 @@ export const sendChatMessageTool = (server: McpServer) => {
         importance,
         format,
         replyToId,
+        attachments,
       });
 
       return {

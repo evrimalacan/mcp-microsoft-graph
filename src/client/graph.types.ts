@@ -151,6 +151,7 @@ export interface SendChatMessageParams {
   importance?: 'normal' | 'high' | 'urgent';
   format?: 'text' | 'markdown';
   replyToId?: string;
+  attachments?: string[];
 }
 
 export interface UpdateChatMessageParams {
@@ -290,4 +291,24 @@ export interface ListTranscriptsParams {
 export interface GetTranscriptContentParams {
   meetingId: string;
   transcriptId: string;
+}
+
+// ===== SharePoint/OneDrive Operations =====
+
+export interface DownloadSharePointFileParams {
+  contentUrl: string;
+}
+
+export interface DownloadSharePointFileResult {
+  data: Buffer;
+  filename: string;
+  size: number;
+}
+
+export interface UploadToSharePointParams {
+  filePath: string;
+}
+
+export interface UploadToSharePointResult {
+  contentUrl: string;
 }

@@ -1,5 +1,5 @@
 import type { Client } from '@microsoft/microsoft-graph-client';
-import type { ChatMessageMention } from '@microsoft/microsoft-graph-types';
+import type { ChatMessageAttachment, ChatMessageMention, ItemBody } from '@microsoft/microsoft-graph-types';
 import { markdownToHtml } from '../utils/markdown.js';
 import { escapeODataString } from '../utils/odata.js';
 import type {
@@ -9,6 +9,8 @@ import type {
   ChatMessage,
   CreateCalendarEventParams,
   CreateChatParams,
+  DownloadSharePointFileParams,
+  DownloadSharePointFileResult,
   Event,
   FindMeetingTimesParams,
   GetCalendarEventsParams,
@@ -35,8 +37,14 @@ import type {
   SetPreferredPresenceParams,
   UnsetMessageReactionParams,
   UpdateChatMessageParams,
+  UploadToSharePointParams,
+  UploadToSharePointResult,
   User,
 } from './graph.types.js';
+import { encodeSharePointUrl } from '../utils/sharepoint.js';
+import { readFile } from 'node:fs/promises';
+import { basename } from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 export class GraphClient {
   constructor(private client: Client) {}
@@ -186,24 +194,35 @@ export class GraphClient {
       content = mentionResult.content;
     }
 
-    const bodyPayload = {
+    // Build attachments array if provided
+    let attachments: ChatMessageAttachment[] | undefined;
+    if (params.attachments && params.attachments.length > 0) {
+      attachments = params.attachments.map((contentUrl) => ({
+        id: randomUUID(),
+        contentType: 'reference',
+        contentUrl,
+      }));
+    }
+
+    const body: ItemBody = {
       content,
       contentType: params.format === 'markdown' ? 'html' : mentionResult.contentType,
     };
 
+    const mentions: ChatMessageMention[] | undefined =
+      mentionResult.mentions.length > 0 ? mentionResult.mentions : undefined;
+
     // Reply to a message using beta replyWithQuote endpoint
     if (params.replyToId) {
-      const replyPayload: Record<string, unknown> = {
+      const replyPayload = {
         messageIds: [params.replyToId],
         replyMessage: {
-          body: bodyPayload,
+          body,
           importance: params.importance || 'normal',
+          mentions,
+          attachments,
         },
       };
-
-      if (mentionResult.mentions.length > 0) {
-        (replyPayload.replyMessage as Record<string, unknown>).mentions = mentionResult.mentions;
-      }
 
       return await this.client
         .api(`/chats/${params.chatId}/messages/replyWithQuote`)
@@ -212,14 +231,12 @@ export class GraphClient {
     }
 
     // Regular message
-    const messagePayload: Record<string, unknown> = {
-      body: bodyPayload,
+    const messagePayload: Partial<ChatMessage> = {
+      body,
       importance: params.importance || 'normal',
+      mentions,
+      attachments,
     };
-
-    if (mentionResult.mentions.length > 0) {
-      messagePayload.mentions = mentionResult.mentions;
-    }
 
     return await this.client.api(`/me/chats/${params.chatId}/messages`).post(messagePayload);
   }
@@ -543,6 +560,48 @@ export class GraphClient {
     }
 
     return new TextDecoder('utf-8').decode(combined);
+  }
+
+  // ===== SharePoint/OneDrive Operations =====
+
+  async downloadSharePointFile(params: DownloadSharePointFileParams): Promise<DownloadSharePointFileResult> {
+    const encodedUrl = encodeSharePointUrl(params.contentUrl);
+
+    // Get driveItem metadata for canonical filename
+    const driveItem = await this.client.api(`/shares/${encodedUrl}/driveItem`).get();
+
+    // Download content
+    const response = await this.client
+      .api(`/shares/${encodedUrl}/driveItem/content`)
+      .responseType('arraybuffer' as any)
+      .get();
+
+    const data = Buffer.from(response);
+
+    return {
+      data,
+      filename: driveItem.name,
+      size: data.length,
+    };
+  }
+
+  async uploadToSharePoint(params: UploadToSharePointParams): Promise<UploadToSharePointResult> {
+    const filename = basename(params.filePath);
+    const fileContent = await readFile(params.filePath);
+
+    // Step 1: Upload file to OneDrive
+    const uploadResponse = await this.client.api(`/me/drive/root:/${filename}:/content`).put(fileContent);
+
+    // Step 2: Create a sharing link (Teams attachments need this format, not direct webUrl)
+    const linkResponse = await this.client.api(`/me/drive/items/${uploadResponse.id}/createLink`).post({
+      type: 'view',
+      scope: 'organization',
+    });
+
+    // The sharing link webUrl is what Teams needs for clickable attachments
+    const sharingUrl = linkResponse.link?.webUrl || uploadResponse.webUrl;
+
+    return { contentUrl: sharingUrl };
   }
 
   // ===== Private Methods =====

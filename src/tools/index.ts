@@ -1,4 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { downloadSharePointFileTool, uploadToSharePointTool } from './attachments/index.js';
 import {
   cancelCalendarEventTool,
   createCalendarEventTool,
@@ -51,4 +52,8 @@ export function registerTools(server: McpServer) {
   // Transcript tools
   listMeetingTranscriptsTool(server);
   getMeetingTranscriptTool(server);
+
+  // Attachment tools
+  downloadSharePointFileTool(server);
+  uploadToSharePointTool(server);
 }

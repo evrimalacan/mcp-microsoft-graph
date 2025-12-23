@@ -24,10 +24,18 @@ export const downloadSharePointFileTool = (server: McpServer) => {
 
       const results = await Promise.all(
         contentUrls.map(async (contentUrl) => {
-          const result = await client.downloadSharePointFile({ contentUrl });
-          const filePath = join(dir, result.filename);
-          await writeFile(filePath, result.data);
-          return { path: filePath, filename: result.filename, size: result.size };
+          try {
+            const result = await client.downloadSharePointFile({ contentUrl });
+            const filePath = join(dir, result.filename);
+            await writeFile(filePath, result.data);
+            return { success: true, contentUrl, path: filePath };
+          } catch (error: any) {
+            const message =
+              error.code === 'accessDenied'
+                ? 'You do not have access to this file. Please ask the owner to grant you permissions.'
+                : error.message;
+            return { success: false, contentUrl, error: message };
+          }
         }),
       );
 

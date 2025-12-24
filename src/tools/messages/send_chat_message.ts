@@ -11,7 +11,7 @@ const schema = z.object({
   attachments: z
     .array(z.string())
     .optional()
-    .describe('SharePoint sharing links (e.g., https://company.sharepoint.com/:f:/g/...)'),
+    .describe('SharePoint/OneDrive sharing links to attach files to your message'),
 });
 
 export const sendChatMessageTool = (server: McpServer) => {

@@ -304,6 +304,8 @@ export interface DownloadSharePointFileResult {
   data: Buffer;
   filename: string;
   size: number;
+  itemId: string;
+  driveId: string;
 }
 
 export interface UploadToSharePointParams {
@@ -311,5 +313,25 @@ export interface UploadToSharePointParams {
 }
 
 export interface UploadToSharePointResult {
-  contentUrl: string;
+  itemId: string;
+  driveId: string;
+  shareUrl: string;
+}
+
+export interface UpdateSharePointFileParams {
+  itemId: string;
+  driveId: string;
+  filePath: string;
+}
+
+export interface UpdateSharePointFileResult {
+  filename: string;
+  size: number;
+}
+
+export interface GrantFilePermissionParams {
+  itemId: string;
+  driveId: string;
+  emails: string[];
+  role: 'read' | 'write';
 }

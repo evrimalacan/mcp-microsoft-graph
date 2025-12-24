@@ -19,6 +19,7 @@ import type {
   GetMeetingByJoinUrlParams,
   GetTranscriptContentParams,
   GetUserParams,
+  GrantFilePermissionParams,
   GraphApiResponse,
   ListMailsParams,
   ListTranscriptsParams,
@@ -37,6 +38,8 @@ import type {
   SetPreferredPresenceParams,
   UnsetMessageReactionParams,
   UpdateChatMessageParams,
+  UpdateSharePointFileParams,
+  UpdateSharePointFileResult,
   UploadToSharePointParams,
   UploadToSharePointResult,
   User,
@@ -567,8 +570,8 @@ export class GraphClient {
   async downloadSharePointFile(params: DownloadSharePointFileParams): Promise<DownloadSharePointFileResult> {
     const encodedUrl = encodeSharePointUrl(params.contentUrl);
 
-    // Get driveItem metadata for canonical filename
-    const driveItem = await this.client.api(`/shares/${encodedUrl}/driveItem`).get();
+    // Get driveItem metadata including IDs for subsequent operations
+    const driveItem = await this.client.api(`/shares/${encodedUrl}/driveItem`).select('id,name,parentReference').get();
 
     // Download content
     const response = await this.client
@@ -582,6 +585,8 @@ export class GraphClient {
       data,
       filename: driveItem.name,
       size: data.length,
+      itemId: driveItem.id,
+      driveId: driveItem.parentReference?.driveId,
     };
   }
 
@@ -592,16 +597,36 @@ export class GraphClient {
     // Step 1: Upload file to OneDrive
     const uploadResponse = await this.client.api(`/me/drive/root:/${filename}:/content`).put(fileContent);
 
-    // Step 2: Create a sharing link (Teams attachments need this format, not direct webUrl)
+    // Step 2: Create a sharing link
     const linkResponse = await this.client.api(`/me/drive/items/${uploadResponse.id}/createLink`).post({
       type: 'view',
       scope: 'organization',
     });
 
-    // The sharing link webUrl is what Teams needs for clickable attachments
-    const sharingUrl = linkResponse.link?.webUrl || uploadResponse.webUrl;
+    return {
+      itemId: uploadResponse.id,
+      driveId: uploadResponse.parentReference?.driveId,
+      shareUrl: linkResponse.link?.webUrl || uploadResponse.webUrl,
+    };
+  }
 
-    return { contentUrl: sharingUrl };
+  async updateSharePointFile(params: UpdateSharePointFileParams): Promise<UpdateSharePointFileResult> {
+    const fileContent = await readFile(params.filePath);
+    const result = await this.client.api(`/drives/${params.driveId}/items/${params.itemId}/content`).put(fileContent);
+
+    return {
+      filename: result.name,
+      size: result.size,
+    };
+  }
+
+  async grantFilePermission(params: GrantFilePermissionParams): Promise<void> {
+    await this.client.api(`/drives/${params.driveId}/items/${params.itemId}/invite`).post({
+      recipients: params.emails.map((email) => ({ email })),
+      roles: [params.role],
+      sendInvitation: true,
+      requireSignIn: true,
+    });
   }
 
   // ===== Private Methods =====

@@ -12,19 +12,27 @@ export const uploadToSharePointTool = (server: McpServer) => {
     {
       title: 'Upload to SharePoint',
       description:
-        'Upload a file to OneDrive/SharePoint and create a sharing link. Returns file info for use with send_chat_message attachments.',
+        'Upload a new file to OneDrive and create a sharing link. Use this when creating/generating files to share with users.',
       inputSchema: schema.shape,
     },
     async ({ filePath }) => {
       const client = await graphService.getClient();
-
       const result = await client.uploadToSharePoint({ filePath });
 
       return {
         content: [
           {
             type: 'text',
-            text: result.contentUrl,
+            text: JSON.stringify(
+              {
+                success: true,
+                itemId: result.itemId,
+                driveId: result.driveId,
+                shareUrl: result.shareUrl,
+              },
+              null,
+              2,
+            ),
           },
         ],
       };

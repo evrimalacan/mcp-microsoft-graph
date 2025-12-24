@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { graphService } from '../../services/graph.js';
 
 const schema = z.object({
-  contentUrls: z.array(z.string()).describe('Array of SharePoint URLs from attachment contentUrl fields'),
+  contentUrls: z.array(z.string()).describe('SharePoint/OneDrive URLs to download'),
   targetDir: z.string().optional().describe('Directory to save files (defaults to current directory)'),
 });
 
@@ -14,7 +14,7 @@ export const downloadSharePointFileTool = (server: McpServer) => {
     'download_sharepoint_file',
     {
       title: 'Download SharePoint File',
-      description: 'Download files attached to Teams messages via SharePoint/OneDrive.',
+      description: 'Download files from SharePoint/OneDrive URLs. Returns itemId and driveId for each file.',
       inputSchema: schema.shape,
     },
     async ({ contentUrls, targetDir }) => {
@@ -28,24 +28,29 @@ export const downloadSharePointFileTool = (server: McpServer) => {
             const result = await client.downloadSharePointFile({ contentUrl });
             const filePath = join(dir, result.filename);
             await writeFile(filePath, result.data);
-            return { success: true, contentUrl, path: filePath };
+            return {
+              success: true,
+              path: filePath,
+              size: result.size,
+              itemId: result.itemId,
+              driveId: result.driveId,
+            };
           } catch (error: any) {
-            const message =
-              error.code === 'accessDenied'
-                ? 'You do not have access to this file. Please ask the owner to grant you permissions.'
-                : error.message;
-            return { success: false, contentUrl, error: message };
+            let message: string;
+            if (error.code === 'accessDenied') {
+              message = "Access denied. You don't have permission to access this file. Ask the file owner to share it with you.";
+            } else if (error.code === 'itemNotFound') {
+              message = 'File not found. The URL may be invalid or the file was deleted.';
+            } else {
+              message = error.message || 'Unknown error';
+            }
+            return { success: false, error: message };
           }
         }),
       );
 
       return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(results, null, 2),
-          },
-        ],
+        content: [{ type: 'text', text: JSON.stringify(results, null, 2) }],
       };
     },
   );
